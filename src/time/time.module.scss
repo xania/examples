@@ -1,0 +1,26 @@
+﻿.clock {
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-size: 35px;
+  font-family: "Courier New", Courier, monospace;
+  margin: 30px;
+
+  .icon {
+    margin: 0 5px;
+    font-size: 35px;
+    text-transform: capitalize;
+    font-weight: 600;
+    width: 35px;
+    height: 35px;
+  }
+
+  p {
+    margin: 0 5px;
+    text-transform: capitalize;
+    font-weight: 600;
+    text-align: left;
+  }
+}

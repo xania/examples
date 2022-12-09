@@ -1,0 +1,3 @@
+[submodule "packages/view"]
+	path = packages/view
+	url = https://github.com/xania/view.git
