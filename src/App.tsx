@@ -4,6 +4,7 @@ import { AsyncElements } from "./examples/async";
 
 import { BasicElements } from "./examples/basic";
 import { ReactiveElements } from "./examples/reactive";
+import { TodoApp } from "./examples/todo";
 
 const jsx = jsxFactory({ classes });
 
@@ -20,6 +21,9 @@ export default function App() {
         <a class="router-link" href="/reactive">
           Reactive elements
         </a>
+        <a class="router-link" href="/todomvc">
+          TodoMVC
+        </a>
       </nav>
       <Route path="/">
         <BasicElements />
@@ -29,6 +33,9 @@ export default function App() {
       </Route>
       <Route path="/reactive">
         <ReactiveElements />
+      </Route>
+      <Route path="/todomvc">
+        <TodoApp />
       </Route>
     </div>
   );
