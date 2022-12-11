@@ -1,16 +1,42 @@
 import { jsxFactory } from "@xania/view";
+import classes from "./App.module.scss";
+import { AsyncElements } from "./examples/async";
 
-import "./App.css";
-import Time from "./time";
-import Clock from "./clock";
 import { BasicElements } from "./examples/basic";
+import { ReactiveElements } from "./examples/reactive";
 
-const jsx = jsxFactory();
+const jsx = jsxFactory({ classes });
 
 export default function App() {
   return (
     <div class="App">
-      <BasicElements />
+      <nav>
+        <a class="router-link" href="/">
+          Basic elements
+        </a>
+        <a class="router-link" href="/async">
+          Async elements
+        </a>
+        <a class="router-link" href="/reactive">
+          Reactive elements
+        </a>
+      </nav>
+      <Route path="/">
+        <BasicElements />
+      </Route>
+      <Route path="/async">
+        <AsyncElements />
+      </Route>
+      <Route path="/reactive">
+        <ReactiveElements />
+      </Route>
     </div>
   );
+}
+
+type RouteProps = {
+  path: string;
+};
+function Route(props: RouteProps, children: any) {
+  if (props.path === window.location.pathname) return children;
 }

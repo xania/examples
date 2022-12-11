@@ -1,0 +1,14 @@
+﻿.router-link {
+  color: rgb(134, 134, 134);
+  border: 1px solid rgb(201, 201, 201);
+  margin: 10px;
+  border-radius: 3px;
+  display: inline-block;
+  padding: 4px;
+  text-decoration: none;
+
+  &:hover {
+    color: black;
+    border-color: gray;
+  }
+}
