@@ -66,9 +66,11 @@ function MultipleRootElementsDemo() {
   return (
     <Section title="Multiple root elements flashing in and out preserving order">
       <span class="element">simple root element 1</span>
-      <span class={delay("element")}>
-        Element suspended untill attribute promise is resolved
-      </span>
+      {view(
+        <span class={delay("element")}>
+          Element suspended untill attribute promise is resolved
+        </span>
+      )}
       {view(
         Rx.timer(0, 1000).pipe(
           Ro.map(() => (

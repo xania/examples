@@ -6,8 +6,6 @@
   useContext,
   If,
   Css,
-  State,
-  RenderContext,
   Lazy,
 } from "@xania/view";
 
@@ -131,26 +129,24 @@ function TodoList(props: TodoListProps) {
     }
     clearSelection = editing.select(e.data);
   }
+  function setCompleted(e: JSX.EventContext<TodoItem, Event>) {
+    const data = e.data;
+    data.completed = (e.event.target as any).checked;
+    props.items.update(() => [data]);
+  }
 
   return (
     <ul class="todo-list">
       <List source={props.items}>
         <li
-          class={[
-            editing,
-            // row.map((todoItem) =>
-            //   todoItem.map((x) => (x.completed ? "completed" : null))
-            // ),
-          ]}
+          class={[editing, row.map((x) => (x.completed ? "completed" : null))]}
         >
           <div class="view">
             <input
               class="toggle"
               type="checkbox"
               checked={row.get("completed")}
-              change={(evnt) =>
-                evnt.data.get("completed").update(evnt.node.checked)
-              }
+              change={setCompleted}
             />
             <label dblclick={select}>{row.get("label")}</label>
             <button
@@ -176,7 +172,7 @@ function TodoList(props: TodoListProps) {
               }
             }}
           >
-            {/* {focusOn()} */}
+            {editing.attach(focusInput)}
             {/* {$((_, { key, node }) =>
               currentEditing.pipe(
                 Ro.filter((x) => x === key),
@@ -195,19 +191,8 @@ interface TodoItem {
   completed: boolean;
 }
 
-function focusInput(elt: HTMLInputElement) {}
-
-function focusOn(condition: JSX.Subscribable<TodoItem>) {
-  return {
-    render(inputElt: HTMLInputElement, context: RenderContext<TodoItem>) {
-      return condition.subscribe({
-        next(b) {
-          if (b === context.data) {
-            inputElt.focus();
-            inputElt.setSelectionRange(0, inputElt.value.length);
-          }
-        },
-      });
-    },
-  };
+function focusInput(e: JSX.ViewContext<TodoItem>) {
+  const inputElt = e.node;
+  inputElt.focus();
+  inputElt.setSelectionRange(0, inputElt.value.length);
 }
