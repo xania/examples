@@ -47,3 +47,14 @@ type RouteProps = {
 function Route(props: RouteProps, children: any) {
   if (props.path === window.location.pathname) return children;
 }
+
+class Bla {
+  [Symbol.iterator]() {
+    return [1, 12].values();
+  }
+}
+
+const b = new Bla();
+const [x, y] = b;
+
+console.log(x, y);

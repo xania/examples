@@ -14,7 +14,6 @@ import classes from "./index.module.scss";
 const jsx = jsxFactory({ classes });
 
 export function TodoApp() {
-  const newTodoText = new Lazy("");
   const items = createListSource<TodoItem>([
     {
       label: "hello",
@@ -29,17 +28,6 @@ export function TodoApp() {
       completed: false,
     },
   ]);
-  function onNewTodoKeyUp(e: JSX.EventContext<TodoItem, KeyboardEvent>) {
-    const label = (e.event.target as any).value;
-    if (e.event.key === "Enter" && label) {
-      const newItem: TodoItem = {
-        label,
-        completed: false,
-      };
-      items.append([newItem]);
-      newTodoText.select(e.data);
-    }
-  }
 
   return (
     <>
@@ -48,12 +36,7 @@ export function TodoApp() {
         <div>
           <header class="header">
             <h1>todos</h1>
-            <input
-              class="new-todo"
-              placeholder="What needs to be done?"
-              value={newTodoText}
-              keyup={onNewTodoKeyUp}
-            />
+            <NewTodo onNew={(item) => items.append([item])} />
           </header>
           <TodoList items={items} />
           <If condition={items.map((l) => l.length > 0)}>
@@ -62,6 +45,33 @@ export function TodoApp() {
         </div>
       </section>
     </>
+  );
+}
+
+interface NewTodoProps {
+  onNew(x: TodoItem): any;
+}
+
+function NewTodo(props: NewTodoProps) {
+  const newTodoText = new Lazy("");
+  function onNewTodoKeyUp(e: JSX.EventContext<TodoItem, KeyboardEvent>) {
+    const label = (e.event.target as any).value;
+    if (e.event.key === "Enter" && label) {
+      const newItem: TodoItem = {
+        label,
+        completed: false,
+      };
+      props.onNew(newItem);
+      newTodoText.select(e.data);
+    }
+  }
+  return (
+    <input
+      class="new-todo"
+      placeholder="What needs to be done?"
+      value={newTodoText}
+      keyup={onNewTodoKeyUp}
+    />
   );
 }
 
@@ -165,7 +175,7 @@ function TodoList(props: TodoListProps) {
               if (evnt.event.key === "Enter") {
                 const target = evnt.event.target as HTMLInputElement;
                 evnt.data.label = target.value;
-                props.items.updatePartial([evnt.data]);
+                props.items.update(() => [evnt.data]);
                 clearSelection();
               } else if (evnt.event.key === "Escape") {
                 clearSelection();
