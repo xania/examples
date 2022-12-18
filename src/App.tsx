@@ -3,14 +3,14 @@ import classes from "./App.module.scss";
 import { AsyncElements } from "./examples/async";
 
 import { BasicElements } from "./examples/basic";
-import { ReactiveElements } from "./examples/reactive";
+import { ReactiveElements, UseStateDemo } from "./examples/reactive";
 import { TodoApp } from "./examples/todo";
 
 const jsx = jsxFactory({ classes });
 
 export default function App() {
   return (
-    <div class="App">
+    <>
       <nav>
         <a class="router-link" href="/">
           Basic elements
@@ -25,19 +25,21 @@ export default function App() {
           TodoMVC
         </a>
       </nav>
-      <Route path="/">
-        <BasicElements />
-      </Route>
-      <Route path="/async">
-        <AsyncElements />
-      </Route>
-      <Route path="/reactive">
-        <ReactiveElements />
-      </Route>
-      <Route path="/todomvc">
-        <TodoApp />
-      </Route>
-    </div>
+      <div class="App">
+        <Route path="/">
+          <BasicElements />
+        </Route>
+        <Route path="/async">
+          <AsyncElements />
+        </Route>
+        <Route path="/reactive">
+          <ReactiveElements />
+        </Route>
+        <Route path="/todomvc">
+          <TodoApp />
+        </Route>
+      </div>
+    </>
   );
 }
 
@@ -47,14 +49,3 @@ type RouteProps = {
 function Route(props: RouteProps, children: any) {
   if (props.path === window.location.pathname) return children;
 }
-
-class Bla {
-  [Symbol.iterator]() {
-    return [1, 12].values();
-  }
-}
-
-const b = new Bla();
-const [x, y] = b;
-
-console.log(x, y);

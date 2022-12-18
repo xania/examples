@@ -1,9 +1,6 @@
 ﻿import { Action } from "./action";
 import { ActionContext } from "./action-context";
-
-type Optional<T> = {
-  [P in keyof T]?: Optional<T[P]>;
-};
+import { Optional } from "./optional";
 
 export function tsconfig(schema: Optional<TsConfigScheme>): Action {
   return (context: ActionContext) => {

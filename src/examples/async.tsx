@@ -1,4 +1,4 @@
-﻿import { jsxFactory, useState } from "@xania/view";
+﻿import { jsxFactory, useState, view } from "@xania/view";
 import classes from "./css.module.scss";
 import { Section } from "./section";
 
@@ -8,7 +8,7 @@ export function AsyncElements() {
   return (
     <>
       <Section title="Async text content">
-        <DelayedTextContent value={delay("Now you see me", 1000)} />
+        {view(<DelayedTextContent value={delay("Now you see me", 1000)} />)}
       </Section>
       {/* <Section title="Custom render function">
           <CustomRenderDemo />

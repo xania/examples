@@ -23,7 +23,7 @@ export function ReactiveElements() {
   );
 }
 
-function UseStateDemo() {
+export function UseStateDemo() {
   const count = useState(0);
 
   return (

@@ -33,10 +33,12 @@ button {
   display: block;
   height: 100%;
   padding: 20px;
+  justify-content: center;
+  flex: 1;
 }
 .todoapp {
   background: #fff;
-  margin: 130px 0 0 0;
+  margin: 130px auto;
   position: relative;
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2), 0 25px 50px 0 rgba(0, 0, 0, 0.1);
   width: 592px;

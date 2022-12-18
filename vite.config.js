@@ -1,20 +1,23 @@
 ﻿import { defineConfig } from "vite";
-const path = require("path");
+import path, { resolve } from "node:path";
+import { fileURLToPath } from "url";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
-  logLevel: "info",
+  logLevel: "debug",
   resolve: {
     alias: {
-      "@xania/view": path.resolve(__dirname, "./packages/view/lib/index.ts"),
+      "@xania/view": path.resolve(__dirname, "packages/view/lib/index.ts"),
     },
   },
   server: {
     port: 3000,
     host: "0.0.0.0",
   },
-  root: "src",
   build: {
+    manifest: true,
     minify: true,
-    outDir: "../dist",
+    outDir: "dist",
   },
 });

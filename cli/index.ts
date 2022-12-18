@@ -3,6 +3,8 @@ import { Action } from "./actions/action";
 import { degit } from "./actions/git";
 import { npmInstall, npmUninstall } from "./actions/npm";
 import { tsconfig } from "./actions/tsconfig";
+import { vite } from "./actions/vite";
+
 const { select } = enquirer;
 
 async function templates() {
@@ -26,9 +28,16 @@ async function templates() {
             jsx: "react",
             jsxFactory: "jsx.createElement",
             jsxFragmentFactory: "jsx.createFragment",
-            typeRoots: ["./packages/xania/view/types"],
+            typeRoots: ["packages/xania/view/types"],
             paths: {
-              ["@xania/view"]: ["./packages/@xania/view/lib/index.ts"],
+              ["@xania/view"]: ["packages/@xania/view/lib/index.ts"],
+            },
+          },
+        }),
+        vite({
+          resolve: {
+            alias: {
+              "@xania/view": "packages/view/lib/index.ts",
             },
           },
         })

@@ -10,6 +10,7 @@
     "typeRoots": ["./types", "./packages/xania/view/types"],
     "paths": {
       "@xania/view": ["./packages/view/lib/index.ts"]
-    }
+    },
+    "allowSyntheticDefaultImports": true
   }
 }

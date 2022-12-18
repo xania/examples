@@ -13,22 +13,22 @@ import classes from "./index.module.scss";
 
 const jsx = jsxFactory({ classes });
 
-export function TodoApp() {
-  const items = createListSource<TodoItem>([
-    {
-      label: "hello",
-      completed: true,
-    },
-    {
-      label: "hi",
-      completed: false,
-    },
-    {
-      label: "hoi",
-      completed: false,
-    },
-  ]);
+const items = createListSource<TodoItem>([
+  {
+    label: "hello",
+    completed: true,
+  },
+  {
+    label: "hi",
+    completed: false,
+  },
+  {
+    label: "hoi",
+    completed: false,
+  },
+]);
 
+export function TodoApp() {
   return (
     <>
       <Css value="todoapp-container" />
@@ -38,7 +38,7 @@ export function TodoApp() {
             <h1>todos</h1>
             <NewTodo onNew={(item) => items.append([item])} />
           </header>
-          <TodoList items={items} />
+          <TodoList />
           <If condition={items.map((l) => l.length > 0)}>
             <TodoFooter items={items} />
           </If>
@@ -124,11 +124,7 @@ function TodoFooter(props: TodoListProps) {
   );
 }
 
-interface TodoListProps {
-  items: ListSource<TodoItem>;
-}
-
-function TodoList(props: TodoListProps) {
+function TodoList() {
   const row = useContext<TodoItem>();
   const editing = row.lazy("editing");
 
@@ -142,12 +138,12 @@ function TodoList(props: TodoListProps) {
   function setCompleted(e: JSX.EventContext<TodoItem, Event>) {
     const data = e.data;
     data.completed = (e.event.target as any).checked;
-    props.items.update(() => [data]);
+    items.update(() => [data]);
   }
 
   return (
     <ul class="todo-list">
-      <List source={props.items}>
+      <List source={items}>
         <li
           class={[editing, row.map((x) => (x.completed ? "completed" : null))]}
         >
@@ -161,7 +157,7 @@ function TodoList(props: TodoListProps) {
             <label dblclick={select}>{row.get("label")}</label>
             <button
               class="destroy"
-              click={(e) => props.items.delete(e.data)}
+              click={(e) => items.delete(e.data)}
             ></button>
           </div>
           <input
@@ -175,7 +171,7 @@ function TodoList(props: TodoListProps) {
               if (evnt.event.key === "Enter") {
                 const target = evnt.event.target as HTMLInputElement;
                 evnt.data.label = target.value;
-                props.items.update(() => [evnt.data]);
+                items.update(() => [evnt.data]);
                 clearSelection();
               } else if (evnt.event.key === "Escape") {
                 clearSelection();
