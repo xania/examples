@@ -1,4 +1,4 @@
-import { jsxFactory } from "@xania/view";
+import { Css, jsxFactory } from "@xania/view";
 import classes from "./App.module.scss";
 import { AsyncElements } from "./examples/async";
 
@@ -7,6 +7,13 @@ import { ReactiveElements, UseStateDemo } from "./examples/reactive";
 import { TodoApp } from "./examples/todo";
 
 const jsx = jsxFactory({ classes });
+
+interface SpaProps {
+  children: string;
+}
+function Spa(props: SpaProps) {
+  return props.children;
+}
 
 export default function App() {
   return (
@@ -45,7 +52,8 @@ export default function App() {
 
 type RouteProps = {
   path: string;
+  children: JSX.Children;
 };
-function Route(props: RouteProps, children: any) {
-  if (props.path === window.location.pathname) return children;
+function Route(props: RouteProps) {
+  if (props.path === window.location.pathname) return props.children;
 }

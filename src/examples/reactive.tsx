@@ -1,10 +1,11 @@
-﻿import { jsxFactory, useState } from "@xania/view";
+﻿import { jsxFactory } from "@xania/view";
 import classes from "./css.module.scss";
 import * as Rx from "rxjs";
 import * as Ro from "rxjs/operators";
 import { Section } from "./section";
 import { delay } from "./async";
 import { view } from "../../packages/view/lib/render/view";
+import { State } from "@xania/state";
 
 const jsx = jsxFactory({ classes });
 
@@ -24,16 +25,13 @@ export function ReactiveElements() {
 }
 
 export function UseStateDemo() {
-  const count = useState(0);
+  const count = new State<number>(1);
 
   return (
     <Section title="State support">
       <div class="element">
         <div>Count: {count}</div>
-        <button
-          class="mdc-button"
-          click={(_) => count.update(count.snapshot + 1)}
-        >
+        <button class="mdc-button" click={(_) => count.set(count.snapshot + 1)}>
           <span>Increment</span>
         </button>
       </div>

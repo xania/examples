@@ -15,7 +15,6 @@ body {
 
   display: flex;
   flex-direction: column;
-  flex-wrap: wrap;
 
   background-color: white;
 }

@@ -1,4 +1,4 @@
-﻿import { jsxFactory, useState, view } from "@xania/view";
+﻿import { jsxFactory, view } from "@xania/view";
 import classes from "./css.module.scss";
 import { Section } from "./section";
 

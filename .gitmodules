@@ -1,3 +1,6 @@
 [submodule "packages/view"]
 	path = packages/view
 	url = https://github.com/xania/view.git
+[submodule "packages/state"]
+	path = packages/state
+	url = https://github.com/xania/state

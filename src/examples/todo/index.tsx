@@ -7,6 +7,8 @@
   If,
   Css,
   Lazy,
+  EventContext,
+  ViewContext,
 } from "@xania/view";
 
 import classes from "./index.module.scss";
@@ -31,7 +33,7 @@ const items = createListSource<TodoItem>([
 export function TodoApp() {
   return (
     <>
-      <Css value="todoapp-container" />
+      <Css value="todoapp-container header" />
       <section class="todoapp">
         <div>
           <header class="header">
@@ -54,7 +56,7 @@ interface NewTodoProps {
 
 function NewTodo(props: NewTodoProps) {
   const newTodoText = new Lazy("");
-  function onNewTodoKeyUp(e: JSX.EventContext<TodoItem, KeyboardEvent>) {
+  function onNewTodoKeyUp(e: EventContext<TodoItem, KeyboardEvent>) {
     const label = (e.event.target as any).value;
     if (e.event.key === "Enter" && label) {
       const newItem: TodoItem = {
@@ -144,49 +146,54 @@ function TodoList() {
   return (
     <ul class="todo-list">
       <List source={items}>
-        <li
-          class={[editing, row.map((x) => (x.completed ? "completed" : null))]}
-        >
-          <div class="view">
-            <input
-              class="toggle"
-              type="checkbox"
-              checked={row.get("completed")}
-              change={setCompleted}
-            />
-            <label dblclick={select}>{row.get("label")}</label>
-            <button
-              class="destroy"
-              click={(e) => items.delete(e.data)}
-            ></button>
-          </div>
-          <input
-            class="edit"
-            value={row.get("label")}
-            blur={(evnt) => {
-              // evnt.node.value = evnt.data.get("label");
-              clearSelection();
-            }}
-            keyup={(evnt: JSX.EventContext<TodoItem, KeyboardEvent>) => {
-              if (evnt.event.key === "Enter") {
-                const target = evnt.event.target as HTMLInputElement;
-                evnt.data.label = target.value;
-                items.update(() => [evnt.data]);
-                clearSelection();
-              } else if (evnt.event.key === "Escape") {
-                clearSelection();
-              }
-            }}
+        {(row) => (
+          <li
+            class={[
+              editing,
+              row.map((x) => (x.completed ? "completed" : null)),
+            ]}
           >
-            {editing.attach(focusInput)}
-            {/* {$((_, { key, node }) =>
+            <div class="view">
+              <input
+                class="toggle"
+                type="checkbox"
+                checked={row.get("completed")}
+                change={setCompleted}
+              />
+              <label dblclick={select}>{row.get("label")}</label>
+              <button
+                class="destroy"
+                click={(e) => items.delete(e.data)}
+              ></button>
+            </div>
+            <input
+              class="edit"
+              value={row.get("label")}
+              blur={(evnt) => {
+                // evnt.node.value = evnt.data.get("label");
+                clearSelection();
+              }}
+              keyup={(evnt: JSX.EventContext<TodoItem, KeyboardEvent>) => {
+                if (evnt.event.key === "Enter") {
+                  const target = evnt.event.target as HTMLInputElement;
+                  evnt.data.label = target.value;
+                  items.update(() => [evnt.data]);
+                  clearSelection();
+                } else if (evnt.event.key === "Escape") {
+                  clearSelection();
+                }
+              }}
+            >
+              {editing.attach(focusInput)}
+              {/* {$((_, { key, node }) =>
               currentEditing.pipe(
                 Ro.filter((x) => x === key),
                 Ro.map(() => focusInput(node as HTMLInputElement))
               )
             )} */}
-          </input>
-        </li>
+            </input>
+          </li>
+        )}
       </List>
     </ul>
   );
@@ -197,7 +204,7 @@ interface TodoItem {
   completed: boolean;
 }
 
-function focusInput(e: JSX.ViewContext<TodoItem>) {
+function focusInput(e: ViewContext<TodoItem>) {
   const inputElt = e.node;
   inputElt.focus();
   inputElt.setSelectionRange(0, inputElt.value.length);

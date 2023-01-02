@@ -14,6 +14,9 @@ async function createServer() {
   // can take control
   const vite = await createViteServer({
     server: { middlewareMode: true },
+    ssr: {
+      target: "node",
+    },
     appType: "custom",
   });
 
@@ -23,13 +26,35 @@ async function createServer() {
 
   app.use("*", async (req, res, next) => {
     // serve index.html - we will tackle this next
-    const url = req.originalUrl;
+    const url = req.baseUrl;
 
     try {
       // 1. Read index.html
-      let template = fs.readFileSync(
-        path.resolve(__dirname, "index.html"),
-        "utf-8"
+      // let template = fs.readFileSync(
+      //   path.resolve(__dirname, "index.html"),
+      //   "utf-8"
+      // );
+
+      res.status(200).set({ "Content-Type": "text/html" });
+
+      const layoutUrl = `/src/layout/Layout.tsx`;
+      const pageUrl = `/src/pages${req.baseUrl}.tsx`;
+
+      const { layout } = await vite.ssrLoadModule(layoutUrl);
+      const page = await vite.ssrLoadModule(pageUrl);
+      let pageContent = "";
+
+      const { serverRender } = await vite.ssrLoadModule("/src/backend");
+      await serverRender(page.view(), (str) => (pageContent += str));
+
+      let template = "";
+      var app = await serverRender(
+        layout({}, [
+          pageContent,
+          `<script type="module" src="${layoutUrl}" ></script>`,
+          `<script type="module" src="${pageUrl}" ></script>`,
+        ]),
+        (str) => (template += str)
       );
 
       // 2. Apply Vite HTML transforms. This injects the Vite HMR client, and
@@ -38,7 +63,8 @@ async function createServer() {
       const html = await vite.transformIndexHtml(url, template);
 
       // 6. Send the rendered HTML back.
-      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+
+      res.end(html);
     } catch (e) {
       // If an error is caught, let Vite fix the stack trace so it maps back to
       // your actual source code.

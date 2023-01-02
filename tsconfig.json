@@ -7,9 +7,10 @@
     "jsxFragmentFactory": "jsx.createFragment",
     "moduleResolution": "node",
     "module": "ES2020",
-    "typeRoots": ["./types", "./packages/xania/view/types"],
+    "typeRoots": ["./types", "./packages/view/types"],
     "paths": {
-      "@xania/view": ["./packages/view/lib/index.ts"]
+      "@xania/view": ["./packages/view/lib/index.ts"],
+      "@xania/state": ["./packages/state/lib/index.ts"]
     },
     "allowSyntheticDefaultImports": true
   }
