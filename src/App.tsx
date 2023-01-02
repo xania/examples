@@ -1,9 +1,9 @@
-import { Css, jsxFactory } from "@xania/view";
+import { jsxFactory } from "@xania/view";
 import classes from "./App.module.scss";
 import { AsyncElements } from "./examples/async";
 
 import { BasicElements } from "./examples/basic";
-import { ReactiveElements, UseStateDemo } from "./examples/reactive";
+import { ReactiveElements } from "./examples/reactive";
 import { TodoApp } from "./examples/todo";
 
 const jsx = jsxFactory({ classes });

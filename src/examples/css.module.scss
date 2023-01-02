@@ -17,11 +17,12 @@
 .demo-section {
   @include elevation-mixins.elevation(4);
   text-align: center;
-  margin: 16px;
+  margin: 20px auto;
   border-radius: 6px;
   background-color: white;
   color: black;
   padding: 20px;
+  max-width: 500px;
   h4 {
     margin: 0 0 8px 0;
   }

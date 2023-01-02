@@ -13,12 +13,8 @@ export function ReactiveElements() {
   return (
     <>
       <UseStateDemo />
-      <Section title="Timer demo difficult? Why?">
-        <TimerDemo />
-      </Section>
-      <Section title="Element class list consists of constant and dynamic values">
-        <ClassListDemo />
-      </Section>
+      <TimerDemo />
+      <ClassListDemo />
       <MultipleRootElementsDemo />
     </>
   );
@@ -46,17 +42,25 @@ function ClassListDemo() {
       prev === "light-theme" ? "dark-theme" : "light-theme"
     )
   );
-  return <div class={[theme, "element"]}>Toggle theme class each second</div>;
+  return (
+    <Section title="Element class list consists of constant and dynamic values">
+      <div class={[theme, "element"]}>Toggle theme class each second</div>;
+    </Section>
+  );
 }
 
 function TimerDemo() {
   return (
-    <div class="element">
-      <div>
-        {"Current Time: "}
-        {Rx.timer(0, 1000).pipe(Ro.map(() => new Date().toLocaleTimeString()))}
+    <Section title="Timer demo difficult? Why?">
+      <div class="element">
+        <div>
+          {"Current Time: "}
+          {Rx.timer(0, 1000).pipe(
+            Ro.map(() => new Date().toLocaleTimeString())
+          )}
+        </div>
       </div>
-    </div>
+    </Section>
   );
 }
 
