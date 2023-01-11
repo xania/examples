@@ -1,7 +1,7 @@
 ﻿import { jsx } from "@xania/view";
 import "./index.css";
 
-export function layout(_, children) {
+export function Layout({ children }) {
   return (
     <html>
       <head>

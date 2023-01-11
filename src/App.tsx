@@ -8,13 +8,6 @@ import { TodoApp } from "./examples/todo";
 
 const jsx = jsxFactory({ classes });
 
-interface SpaProps {
-  children: string;
-}
-function Spa(props: SpaProps) {
-  return props.children;
-}
-
 export default function App() {
   return (
     <>

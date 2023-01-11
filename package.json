@@ -5,7 +5,6 @@
   "author": "Ibrahim ben Salah",
   "scripts": {
     "start": "npx vite",
-    "ssr": "npx tsx server.ts",
     "build": "npx vite build --emptyOutDir",
     "cli": "npx tsx --watch cli/index.ts"
   },
@@ -25,12 +24,12 @@
     "tslib": "^2.4.1",
     "prettier": "latest",
     "typescript": "^4.9.4",
+    "vite": "latest",
     "enquirer": "^2.3.6"
   },
   "license": "MIT",
   "dependencies": {
     "@material/elevation": "^14.0.0",
-    "rxjs": "^7.6.0",
-    "vite": "latest"
+    "rxjs": "^7.6.0"
   }
 }
