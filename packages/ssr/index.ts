@@ -1,1 +1,1 @@
-﻿export * from './lib';
+﻿export * from './vite/plugin';
