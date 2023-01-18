@@ -4,5 +4,6 @@
   "editor.tabSize": 2,
   "files.exclude": {
     "dist/": true
-  }
+  },
+  "prettier.trailingComma": "none"
 }

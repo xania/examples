@@ -4,7 +4,7 @@
   "license": "MIT",
   "main": "./dist/main.cjs",
   "module": "./dist/main.js",
-  "typings": "./lib/index.ts",
+  "typings": "./index.ts",
   "type": "module",
   "exports": {
     ".": {
@@ -37,10 +37,12 @@
   "author": "Ibrahim ben Salah",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xania/state.git"
+    "url": "git+https://github.com/xania/ssr.git"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18"
   },
   "peepDependencies": {
-    "sass": "^1.57.1",
     "tslib": "^2.4.1",
     "typescript": "^4.9.4"
   },

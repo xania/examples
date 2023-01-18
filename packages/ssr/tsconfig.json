@@ -1,7 +1,6 @@
 {
-  "include": ["lib", "test.ts"],
+  "include": ["lib"],
   "compilerOptions": {
-    "declarationDir": "dist/es2015",
     "module": "ES2015",
     "lib": ["dom", "ESNext", "ES2018.AsyncIterable"],
     "importHelpers": true,
@@ -14,7 +13,6 @@
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node",
     "target": "ES2015",
-    "esModuleInterop": true,
-    "typeRoots": ["types"]
+    "esModuleInterop": true
   }
 }

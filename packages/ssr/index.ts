@@ -1,1 +1,3 @@
-﻿export * from './vite/plugin';
+﻿export * from './lib/plugin';
+export * from './lib/actions';
+export * from './lib/router';

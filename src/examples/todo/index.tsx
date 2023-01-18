@@ -7,8 +7,7 @@
   If,
   Css,
   Lazy,
-  EventContext,
-  ViewContext,
+  EventContext
 } from "@xania/view";
 
 import classes from "./index.module.scss";
@@ -18,16 +17,16 @@ const jsx = jsxFactory({ classes });
 const items = createListSource<TodoItem>([
   {
     label: "hello",
-    completed: true,
+    completed: true
   },
   {
     label: "hi",
-    completed: false,
+    completed: false
   },
   {
     label: "hoi",
-    completed: false,
-  },
+    completed: false
+  }
 ]);
 
 export function TodoApp() {
@@ -61,7 +60,7 @@ function NewTodo(props: NewTodoProps) {
     if (e.event.key === "Enter" && label) {
       const newItem: TodoItem = {
         label,
-        completed: false,
+        completed: false
       };
       props.onNew(newItem);
       newTodoText.select(e.data);
@@ -150,7 +149,7 @@ function TodoList() {
           <li
             class={[
               editing,
-              row.map((x) => (x.completed ? "completed" : null)),
+              row.map((x) => (x.completed ? "completed" : null))
             ]}
           >
             <div class="view">
@@ -204,8 +203,9 @@ interface TodoItem {
   completed: boolean;
 }
 
-function focusInput(e: ViewContext<TodoItem>) {
-  const inputElt = e.node;
-  inputElt.focus();
-  inputElt.setSelectionRange(0, inputElt.value.length);
+function focusInput(inputElt: HTMLInputElement) {
+  setTimeout(() => {
+    inputElt.focus();
+    inputElt.setSelectionRange(0, inputElt.value.length);
+  });
 }

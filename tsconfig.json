@@ -1,16 +1,15 @@
 ﻿{
   "compilerOptions": {
     "noEmit": true,
-    "target": "ES2016",
+    "target": "ESNext",
     "jsxFactory": "jsx.createElement",
     "jsx": "react",
     "jsxFragmentFactory": "jsx.createFragment",
     "moduleResolution": "node",
-    "module": "ES2020",
+    "module": "ESNext",
     "typeRoots": ["./types", "./packages/view/types"],
     "paths": {
       "@xania/view": ["./packages/view/lib/index.ts"],
-      "@xania/ssr": ["./packages/ssr/index.ts"],
       "@xania/state": ["./packages/state/lib/index.ts"]
     },
     "allowSyntheticDefaultImports": true

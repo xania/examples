@@ -1,6 +1,6 @@
 ﻿import { jsx } from "@xania/view";
 import "./index.css";
-import "../src/App.module.scss";
+// import "../src/App.module.scss";
 
 export function Layout({ children }) {
   return (
