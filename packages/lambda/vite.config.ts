@@ -13,7 +13,6 @@ export default defineConfig({
     ],
   },
   build: {
-    minify: true,
     lib: {
       entry: path.resolve(__dirname, 'index.ts'),
       fileName: 'main',

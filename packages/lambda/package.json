@@ -1,6 +1,6 @@
 {
-  "name": "@xania/ssr",
-  "version": "0.1.0-alpha",
+  "name": "@xania/lambda",
+  "version": "0.1.0",
   "license": "MIT",
   "main": "./dist/main.cjs",
   "module": "./dist/main.js",
@@ -24,6 +24,7 @@
     "dev": "npx vite --watch build",
     "build": "npx vite build",
     "clean": "npx rimraf dist",
+    "test": "npx vitest",
     "prepublishOnly": "npm run clean && npm version patch && npm run build"
   },
   "prettier": {
@@ -36,16 +37,14 @@
   "author": "Ibrahim ben Salah",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xania/ssr.git"
+    "url": "git+https://github.com/xania/linq.git"
   },
   "devDependencies": {
-    "@types/node": "^18.11.18"
+    "@types/node": "^18.11.18",
+    "vitest": "^0.27.2"
   },
   "peepDependencies": {
     "tslib": "^2.4.1",
     "typescript": "^4.9.4"
-  },
-  "dependencies": {
-    "kleur": "^4.1.5"
   }
 }
