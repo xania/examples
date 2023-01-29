@@ -3,22 +3,27 @@ import { transform } from '../lib/transform';
 import prettier from 'prettier';
 
 export function assertTransform(code: string, expectedOutput) {
-  const transformedCode = prettier.format(
-    transform(code, { entry: 'view', includeHelper: false })!.code,
-    {
+  let transformedCode = transform(code, {
+    entry: 'view',
+    includeHelper: false,
+  })!.code;
+
+  try {
+    const actualCode = prettier.format(transformedCode, {
       parser: 'babel',
-    }
-  );
+    });
 
-  const expectedCode = prettier.format(expectedOutput, {
-    parser: 'babel',
-  });
+    const expectedCode = prettier.format(expectedOutput, {
+      parser: 'babel',
+    });
 
-  console.log(
-    '\n==============================\n' +
-      transformedCode +
-      '\n==============================\n'
-  );
-
-  expect(transformedCode).toBe(expectedCode);
+    expect(actualCode).toBe(expectedCode);
+  } catch (ex) {
+    console.error(
+      '\n==============================\n' +
+        transformedCode +
+        '\n==============================\n'
+    );
+    throw ex;
+  }
 }

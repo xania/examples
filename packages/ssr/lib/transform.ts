@@ -1,5 +1,6 @@
 ﻿import * as acorn from 'acorn';
 import {
+  ArrowFunctionExpression,
   BlockStatement,
   ClassDeclaration,
   Declaration,
@@ -9,12 +10,14 @@ import {
   Expression,
   FunctionDeclaration,
   FunctionExpression,
+  ImportDeclaration,
   ModuleDeclaration,
   Pattern,
   Program,
   Property,
   SpreadElement,
   Statement,
+  VariableDeclarator,
 } from 'estree';
 import MagicString from 'magic-string';
 import { walk } from 'estree-walker';
@@ -37,7 +40,9 @@ type TypedNode =
   | Pattern
   | ExportNamedDeclaration
   | ExportDefaultDeclaration
-  | ClassDeclaration;
+  | ClassDeclaration
+  | ImportDeclaration
+  | VariableDeclarator;
 
 export type TransfromOptions = {
   entry: string;
@@ -53,7 +58,7 @@ export function transform(
     ecmaVersion: 'latest',
   }) as Program;
 
-  const rootScope = Scope.fromBody(ast.body);
+  const rootScope = Scope.fromBody(ast);
   const scopes = [rootScope];
   const stack: (readonly [Scope, TypedNode, boolean])[] = [];
   // let entryDeclaration: acorn.Node | undefined = undefined;
@@ -63,8 +68,13 @@ export function transform(
     return magicString.slice(node.start, node.end);
   }
 
+  const exportIndex =
+    ast.body.find((n) => n.type !== 'ImportDeclaration')?.start ?? 0;
+
+  magicString.prependLeft(exportIndex, ';');
+
   function exportFunction(
-    node: FunctionDeclaration | FunctionExpression,
+    node: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression,
     scope: Scope
   ) {
     const id = __id(content(node));
@@ -73,17 +83,20 @@ export function transform(
     if (args.length > 0) {
       // magicString.appendLeft(node.start, `(${args.join(',')})`);
       magicString.appendLeft(node.end, `, [${args.join(',')}]`);
-
-      magicString.prependRight(node.start, `(${args.join(',')}) => `);
+      magicString.prependRight(
+        node.start,
+        `;export const ${id} = (${args.join(',')}) => __closure("${id}", `
+      );
+    } else {
+      magicString.prependRight(
+        node.start,
+        `;export const ${id} = __closure("${id}", `
+      );
     }
 
-    magicString.prependRight(
-      node.start,
-      `;export const ${id} = __closure("${id}", `
-    );
-    magicString.appendLeft(node.end, `)`);
+    magicString.appendLeft(node.end, `);`);
 
-    magicString.move(node.start, node.end, ast.end);
+    magicString.move(node.start, node.end, exportIndex);
 
     return [id, args] as const;
   }
@@ -97,17 +110,16 @@ export function transform(
       if (node.type === 'ClassDeclaration') {
         this.skip();
       } else if (node.type === 'BlockStatement') {
-        const blockScope = Scope.fromBody(node.body, scope);
+        const blockScope = Scope.fromBody(node, scope);
         scopes.push(blockScope);
       } else if (node.type === 'FunctionDeclaration') {
+        if (node.id?.name === 'listen') debugger;
+
         const funcScope = Scope.fromParams(node.params, scope);
         scopes.push(funcScope);
 
         if (!scope.parent) {
           if (parent.type === 'ExportDefaultDeclaration') {
-            // const [id, args] = exportFunction(node, scope);
-            // magicString.appendLeft(node.start, `${id}`);
-            // magicString.remove(parent.start, node.start);
             const id = node.id?.name ?? __id(content(parent));
             magicString.appendRight(
               node.start,
@@ -126,39 +138,22 @@ export function transform(
 
             magicString.appendLeft(
               node.end,
-              `;__closure("${funName}", ${funName})`
+              `;__closure("${funName}", ${funName});`
             );
           }
         } else {
           const [id, args] = exportFunction(node, funcScope);
           // create local reference
 
-          magicString.appendRight(node.end, `;const ${node.id!.name} = ${id}`);
+          magicString.appendRight(node.end, `const ${node.id!.name} = ${id}`);
           if (args.length > 0) {
             magicString.appendRight(node.end, `(${args.join(',')})`);
           }
-          //       magicString.appendLeft(funcNode.start, `${id}(${args})`);
-          //       magicString.prependRight(
-          //         funcNode.start,
-          //         `;export const ${id} = (${args}) => __closure("${id}", `
-          //       );
-          //       magicString.appendLeft(
-          //         funcNode.end,
-          //         args.length ? ', [' + args + '])' : ')'
-          //       );
-          //      magicString.move(node.start, funcNode.end, entryDeclaration!.end);
-          //       break;
         }
-      } else if (node.type === 'FunctionExpression') {
-        // if (!scope.parent) {
-        //   const funName = node.id?.name ?? 'default';
-
-        //   magicString.appendLeft(
-        //     node.end,
-        //     `;__closure("${funName}", ${funName})`
-        //   );
-        // }
-
+      } else if (
+        node.type === 'FunctionExpression' ||
+        node.type === 'ArrowFunctionExpression'
+      ) {
         const funcScope = Scope.fromParams(node.params, scope);
         scopes.push(funcScope);
 
@@ -193,20 +188,9 @@ export function transform(
 
           // export definition
           magicString.appendRight(node.start, `__closure("${id}", `);
-          magicString.appendLeft(node.end, `)`);
+          magicString.appendLeft(node.end, `);`);
 
-          magicString.move(node.start, node.end, ast.end);
-          //       magicString.appendLeft(funcNode.start, `${id}(${args})`);
-          //       magicString.prependRight(
-          //         funcNode.start,
-          //         `;export const ${id} = (${args}) => __closure("${id}", `
-          //       );
-          //       magicString.appendLeft(
-          //         funcNode.end,
-          //         args.length ? ', [' + args + '])' : ')'
-          //       );
-          //      magicString.move(node.start, funcNode.end, entryDeclaration!.end);
-          //       break;
+          magicString.move(node.start, node.end, exportIndex);
         }
       }
     },
@@ -227,142 +211,6 @@ export function transform(
     magicString.append(CLOSURE_HELPER);
   }
 
-  // for (const item of ast.body) {
-  //   if (item.type === 'ExportNamedDeclaration') {
-  //     const { declaration } = item;
-  //     if (declaration) {
-  //       if (declaration.type === 'FunctionDeclaration') {
-  //         // if (id?.name === opts.entry) {
-  //         // entryDeclaration = item as any as acorn.Node;
-
-  //         if (declaration.params.length > 0) {
-  //           const declScope = Scope.fromParams(declaration.params, rootScope);
-  //           stack.push([declScope, declaration.body]);
-  //         } else {
-  //           stack.push([rootScope, declaration.body]);
-  //         }
-  //         // }
-  //       }
-  //     }
-  //   }
-  // }
-
-  // // if (!entryDeclaration) {
-  // //   return;
-  // // }
-
-  // function content(node: acorn.Node) {
-  //   return magicString.slice(node.start, node.end);
-  // }
-
-  // while (stack.length) {
-  //   const [scope, node] = stack.pop()!;
-  //   switch (node.type) {
-  //     case 'BlockStatement':
-  //       const blockBody = node.body;
-  //       for (const stmt of blockBody) {
-  //         if (stmt.type === 'ReturnStatement') {
-  //           const { argument } = stmt;
-  //           if (argument) {
-  //             const newScope = Scope.fromBody(blockBody, scope);
-  //             stack.push([newScope, argument]);
-  //             // stack.push([newScope, argument]);
-  //           }
-  //         }
-  //       }
-  //       break;
-  //     case 'FunctionDeclaration':
-  //       const funName = node.id?.name ?? 'default';
-  //       magicString.appendLeft(
-  //         node.end,
-  //         `;${funName}.__src = import.meta.url + "#${funName}"`
-  //       );
-
-  //       {
-  //         let funArgs = getTrappedReferences(node.body, scope);
-  //       }
-  //       break;
-  //     case 'ArrowFunctionExpression':
-  //     case 'FunctionExpression':
-  //       const funcNode = node as any as acorn.Node;
-  //       const id = __id(content(funcNode));
-
-  //       let args = getTrappedReferences(node.body, scope);
-
-  //       magicString.appendLeft(funcNode.start, `${id}(${args})`);
-  //       magicString.prependRight(
-  //         funcNode.start,
-  //         `;export const ${id} = (${args}) => __closure("${id}", `
-  //       );
-  //       magicString.appendLeft(
-  //         funcNode.end,
-  //         args.length ? ', [' + args + '])' : ')'
-  //       );
-  //       magicString.move(funcNode.start, funcNode.end, entryDeclaration!.end);
-  //       break;
-  //     case 'Property':
-  //       if (node.method) {
-  //         if (node.value.type === 'FunctionExpression') {
-  //           const funcNode = node.value as any as acorn.Node;
-
-  //           magicString.appendLeft(funcNode.start, ':');
-  //           magicString.appendRight(funcNode.start, 'function ');
-
-  //           stack.push([scope, node.value]);
-
-  //           // const id = __id(content(funcNode));
-
-  //           // let args = getTrappedReferences(node.value.body, scope);
-
-  //           // magicString.appendLeft(funcNode.start, `: ${id}(${args})`);
-  //           // magicString.appendRight(
-  //           //   funcNode.start,
-  //           //   `;export const ${id} = (${args}) => __closure("${id}", function`
-  //           // );
-  //           // magicString.appendLeft(
-  //           //   funcNode.end,
-  //           //   args.length ? ', [' + args + '])' : ')'
-  //           // );
-  //           // magicString.move(funcNode.start, funcNode.end, endIndex);
-  //         }
-  //       } else {
-  //         stack.push([scope, node.value]);
-  //       }
-  //       break;
-  //     case 'VariableDeclaration':
-  //     case 'ClassDeclaration':
-  //       break;
-  //     case 'SpreadElement':
-  //       stack.push([scope, node.argument]);
-  //       break;
-  //     case 'ArrayExpression':
-  //       for (let i = node.elements.length - 1; i >= 0; i--) {
-  //         const elt = node.elements[i];
-  //         if (elt) {
-  //           stack.push([scope, elt]);
-  //         }
-  //       }
-  //       break;
-  //     case 'ObjectExpression':
-  //       const { properties } = node;
-  //       for (let i = properties.length - 1; i >= 0; i--) {
-  //         stack.push([scope, properties[i]]);
-  //       }
-  //       break;
-  //     case 'Identifier':
-  //       const resolved = scope.resolve(node.name);
-  //       if (resolved) {
-  //         const [valueScope, valueExpr] = resolved;
-  //         const valueNode = valueExpr as any as acorn.Node;
-  //       }
-
-  //       // if (resolved) stack.push(resolved);
-  //       break;
-  //     default:
-  //       console.log(node.type);
-  //   }
-  // }
-
   return { code: magicString.toString(), map: magicString.generateMap() };
 }
 
@@ -376,7 +224,8 @@ function __id(str: string) {
     bits[u] = (Math.abs(c - 97) % (122 - 97)) + 97;
   }
 
-  return String.fromCharCode(...bits);
+  const retval = String.fromCharCode(...bits);
+  return retval;
 }
 
 function throwNever(message: string, type: never) {
@@ -392,7 +241,7 @@ class Scope {
     const { variables } = scope;
 
     for (let i = 0, len = patterns.length; i < len; i++) {
-      const pat = patterns[0];
+      const pat = patterns[i];
       if (pat.type === 'Identifier') {
         variables.add(pat.name);
       }
@@ -401,39 +250,39 @@ class Scope {
     return scope;
   }
 
-  static fromBody(
-    root: (Statement | Directive | ModuleDeclaration)[],
-    parent?: Scope
-  ) {
+  static fromBody(root: BlockStatement | Program, parent?: Scope) {
     const scope = new Scope(parent);
     scope.init(root);
     return scope;
   }
 
-  init(root: (Statement | Directive | ModuleDeclaration)[]) {
+  init(root: BlockStatement | Program) {
     const { variables } = this;
 
-    const stack = root.slice(0);
-    while (stack.length) {
-      const item = stack.pop()!;
-      if (item.type === 'ExportNamedDeclaration') {
-        if (item.declaration) {
-          stack.push(item.declaration);
-        }
-      } else if (item.type === 'FunctionDeclaration') {
-        const funName = item.id?.name;
-        if (funName) {
-          variables.add(funName);
-        }
-      } else if (item.type === 'VariableDeclaration') {
-        for (const varDeclarator of item.declarations) {
-          const pattern = varDeclarator.id;
+    walk(root, {
+      enter(n, p) {
+        const node = n as TypedNode;
+        const parent = p as TypedNode;
+
+        if (node.type === 'BlockStatement') {
+          if (node !== root) {
+            this.skip();
+          }
+        } else if (node.type === 'FunctionDeclaration') {
+          const funName = node.id?.name;
+          if (funName) {
+            variables.add(funName);
+          }
+
+          this.skip();
+        } else if (node.type === 'VariableDeclarator') {
+          const pattern = node.id;
           if (pattern.type === 'Identifier') {
             variables.add(pattern.name!);
           }
         }
-      }
-    }
+      },
+    });
   }
 
   isTrapped(variable: string) {
@@ -454,14 +303,14 @@ class Scope {
 }
 
 function getTrappedReferences(
-  funcDecl: FunctionDeclaration | FunctionExpression,
-  funcScope: Scope
+  funcDecl: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression,
+  scope: Scope
 ) {
   const funcBody = funcDecl.body;
   const stack: (Expression | Statement | SpreadElement)[] = [];
-  // const funcScope: Scope = new Scope(scope);
+  const funcScope: Scope = new Scope();
   if (funcBody.type === 'BlockStatement') {
-    funcScope.init(funcBody.body);
+    funcScope.init(funcBody);
     for (let i = funcBody.body.length - 1; i >= 0; i--) {
       stack.push(funcBody.body[i]);
     }
@@ -471,42 +320,36 @@ function getTrappedReferences(
 
   const result: string[] = [];
 
-  while (stack.length) {
-    const curr = stack.pop()!;
+  const skip = new Set();
 
-    switch (curr.type) {
-      case 'SpreadElement':
-        stack.push(curr.argument);
-        break;
-      case 'CallExpression':
-        const args = curr.arguments;
-        for (let i = args.length - 1; i >= 0; i--) {
-          stack.push(args[i]);
+  walk(funcBody, {
+    enter(n, p) {
+      const node = n as TypedNode;
+      const parent = p as TypedNode;
+
+      if (skip.delete(node)) {
+        this.skip();
+      } else if (node.type === 'MemberExpression') {
+        skip.add(node.property);
+      } else if (node.type === 'CallExpression') {
+        skip.add(node.callee);
+      } else if (node.type === 'Property') {
+        this.skip();
+      } else if (node.type === 'Identifier') {
+        if (node.name === 'handler') {
+          debugger;
         }
-        break;
-      case 'ReturnStatement':
-        const { argument } = curr;
-        if (argument) {
-          stack.push(argument);
+
+        if (
+          !funcScope.variables.has(node.name) &&
+          !result.includes(node.name) &&
+          scope.isTrapped(node.name)
+        ) {
+          result.push(node.name);
         }
-        break;
-      case 'BinaryExpression':
-        stack.push(curr.left);
-        stack.push(curr.right);
-        break;
-      case 'Identifier':
-        if (funcScope.isTrapped(curr.name)) result.push(curr.name);
-        break;
-      case 'VariableDeclaration':
-        for (const varDeclarator of curr.declarations) {
-          const pattern = varDeclarator.id;
-          if (pattern.type === 'Identifier') {
-            funcScope.variables.add(pattern.name);
-          }
-        }
-        break;
-    }
-  }
+      }
+    },
+  });
 
   return result;
 }

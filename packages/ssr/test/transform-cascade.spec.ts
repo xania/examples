@@ -87,11 +87,11 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
+      export const qsemvhiwnd = __closure("qsemvhiwnd", function Component() {});
       export function App() {
         const Component = qsemvhiwnd;
       }
       __closure("App", App);
-      export const qsemvhiwnd = __closure("qsemvhiwnd", function Component() {});
     `;
     assertTransform(code, expected);
   });
@@ -103,11 +103,11 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
+      export const qangdbqsem = __closure("qangdbqsem", async function Component() {});
       export function App() {
         const Component = qangdbqsem;
       }
       __closure("App", App);
-      export const qangdbqsem = __closure("qangdbqsem", async function Component() {});
     `;
     assertTransform(code, expected);
   });
@@ -122,19 +122,18 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export function App() {
-        const a = 1;
-        const Component = bjnqennpkd(a);
-      }
-      __closure("App", App);
-      export const bjnqennpkd = __closure(
+      export const bjnqennpkd = (a) => __closure(
         "bjnqennpkd",
-        (a) =>
           function Component() {
             return a;
           },
         [a]
       );
+      export function App() {
+        const a = 1;
+        const Component = bjnqennpkd(a);
+      }
+      __closure("App", App);
       `;
     assertTransform(code, expected);
   });
@@ -148,18 +147,17 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export function App(a) {
-        const Component = bjnqennpkd(a);
-      }
-      __closure("App", App);
-      export const bjnqennpkd = __closure(
+      export const bjnqennpkd = (a) => __closure(
         "bjnqennpkd",
-        (a) =>
           function Component() {
             return a;
           },
         [a]
       );
+      export function App(a) {
+        const Component = bjnqennpkd(a);
+      }
+      __closure("App", App);
       `;
     assertTransform(code, expected);
   });
@@ -173,13 +171,13 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
+      export const bjnqennpkd = __closure("bjnqennpkd", function Component() {
+        return a;
+      });
       export function App() {
         const Component = bjnqennpkd;
       }
       __closure("App", App);
-      export const bjnqennpkd = __closure("bjnqennpkd", function Component() {
-        return a;
-      });
       `;
     assertTransform(code, expected);
   });
@@ -194,19 +192,13 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
+      const yrghhuoqcp = (a) =>
+        __closure("yrghhuoqcp", function () { return a; }, [a] );
       export function App() {
         const a = 1;
         return yrghhuoqcp(a);
       }
-      __closure("App", App);
-      const yrghhuoqcp = (a) =>
-        __closure(
-          "yrghhuoqcp",
-          function () {
-            return a;
-          },
-          [a]
-        );`;
+      __closure("App", App);`;
     assertTransform(code, expected);
   });
 
@@ -221,14 +213,14 @@ describe('export declarations', () => {
     `;
 
     const expect = `
+      const yrghhuoqkk = __closure("yrghhuoqkk", function (a) {
+        return a;
+      });
       export function view() {
         const a = 1;
         return yrghhuoqkk;
       }
       __closure("view", view);
-      const yrghhuoqkk = __closure("yrghhuoqkk", function (a) {
-        return a;
-      });
     `;
 
     assertTransform(code, expect);
@@ -242,10 +234,10 @@ describe('export declarations', () => {
     `;
 
     const expect = `
-    export const prop = {
-      createELement: ictgesyxfw,
-    };
-    export const ictgesyxfw = __closure("ictgesyxfw", function () {});
+      export const ictgesyxfw = __closure("ictgesyxfw", function () {});
+      export const prop = {
+        createELement: ictgesyxfw,
+      };
     `;
 
     assertTransform(code, expect);
@@ -259,10 +251,10 @@ describe('export declarations', () => {
     `;
 
     const expect = `
-    export const prop = {
-      createELement: qjrautictg,
-    };
-    export const qjrautictg = __closure("qjrautictg", async function () {});
+      export const qjrautictg = __closure("qjrautictg", async function () {});
+      export const prop = {
+        createELement: qjrautictg,
+      };
     `;
 
     assertTransform(code, expect);
@@ -270,16 +262,38 @@ describe('export declarations', () => {
 
   it('nested property method', () => {
     const code = `
-    export render() {
+    export function render() {
       return compile().then(result => {
         return {
           dispose() {
+            // dispose
           },
         };
       })
     }
+    export function lazy() {
+      return "Hello lazy";
+    }
     `;
 
-    assertTransform(code, code);
+    const expected = `
+      export const bgpxhhyxca = __closure("bgpxhhyxca", function () {
+        // dispose
+      });
+      export const thtvblkpur = __closure("thtvblkpur", function lazy() {
+        return "Hello lazy";
+      })  
+      export function render() {
+        return compile().then(result => {
+          return {
+            dispose:bgpxhhyxca,
+          };
+        })
+      }
+      __closure("render", render);
+      export const lazy = thtvblkpur;
+    `;
+
+    assertTransform(code, expected);
   });
 });
