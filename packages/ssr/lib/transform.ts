@@ -4,15 +4,14 @@ import {
   BlockStatement,
   ClassDeclaration,
   Declaration,
-  Directive,
   ExportDefaultDeclaration,
   ExportNamedDeclaration,
   Expression,
   ForStatement,
   FunctionDeclaration,
   FunctionExpression,
+  Identifier,
   ImportDeclaration,
-  ModuleDeclaration,
   Pattern,
   Program,
   Property,
@@ -62,14 +61,8 @@ export function transform(
 
   const rootScope = new Scope();
   const scopes = [rootScope];
-  const stack: (readonly [Scope, TypedNode, boolean])[] = [];
-  // let entryDeclaration: acorn.Node | undefined = undefined;
 
   const magicString = new MagicString(code);
-  function content(node: { start: number; end: number }) {
-    return magicString.slice(node.start, node.end);
-  }
-
   const exportIndex =
     ast.body.find((n) => n.type !== 'ImportDeclaration')?.start ?? 0;
 
@@ -79,7 +72,7 @@ export function transform(
     node: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression,
     scope: Scope
   ) {
-    const id = __id(content(node));
+    const id = __id(code, node);
     const args = getTrappedReferences(node, scope);
 
     if (args.length > 0) {
@@ -120,7 +113,7 @@ export function transform(
 
         if (!scope.parent) {
           if (parent.type === 'ExportDefaultDeclaration') {
-            const id = node.id?.name ?? __id(content(parent));
+            const id = node.id?.name ?? __id(code, parent);
             magicString.appendRight(
               node.start,
               `const ${id} = __closure("${id}", `
@@ -173,7 +166,7 @@ export function transform(
           }
         } else if (scope.parent) {
           //       const funcNode = node as any as acorn.Node;
-          const id = __id(content(node));
+          const id = __id(code, node);
           const args = getTrappedReferences(node, funcScope);
 
           // create local reference
@@ -216,19 +209,23 @@ export function transform(
   return { code: magicString.toString(), map: magicString.generateMap() };
 }
 
-function __id(str: string) {
-  const maxLen = 10;
-  let bits = new Int8Array({ length: maxLen }).fill('_'.charCodeAt(0));
-  for (let i = 0; i < str.length; i++) {
+function __id(
+  str: string,
+  { id, start, end }: { id?: Identifier | null; start: number; end: number }
+) {
+  const baseName = id ? id.name.slice(0, 5) : '';
+  const maxLen = 10 - baseName.length;
+  const bits = new Int8Array({ length: maxLen }).fill(start);
+  for (let i = 0, len = end - start + 1; i < len; i++) {
     const u = i % maxLen;
-    const c = str.charCodeAt(i) ^ bits[u];
+    const c = str.charCodeAt(i + start) ^ bits[u];
 
     bits[u] = (Math.abs(c - 97) % (122 - 97)) + 97;
   }
 
   const retval = String.fromCharCode(...bits);
 
-  return retval;
+  return baseName + retval;
 }
 
 function throwNever(message: string, type: never) {
@@ -304,9 +301,33 @@ class Scope {
 
           this.skip();
         } else if (node.type === 'VariableDeclarator') {
-          const pattern = node.id;
-          if (pattern.type === 'Identifier') {
-            variables.add(pattern.name!);
+          const stack: Pattern[] = [node.id];
+          while (stack.length) {
+            const pattern = stack.pop()!;
+
+            if (pattern.type === 'Identifier') {
+              variables.add(pattern.name!);
+            } else if (pattern.type === 'ObjectPattern') {
+              for (const p of pattern.properties) {
+                if (p.type === 'Property') {
+                  if (p.key.type === 'Identifier') {
+                    variables.add(p.key.name);
+                  } else {
+                    debugger;
+                  }
+                } else if (p.type === 'RestElement') {
+                  stack.push(p.argument);
+                }
+              }
+            } else if (pattern.type === 'ArrayPattern') {
+              for (const elt of pattern.elements) {
+                if (elt) {
+                  stack.push(elt);
+                }
+              }
+            } else {
+              debugger;
+            }
           }
         }
       },

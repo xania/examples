@@ -24,7 +24,7 @@ export function assertTransform(code: string, expectedOutput) {
 
   function format(code: string) {
     try {
-      return prettier.format(transformedCode, {
+      return prettier.format(code, {
         parser: 'babel',
       });
     } catch {
