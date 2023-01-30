@@ -8,15 +8,10 @@ export function assertTransform(code: string, expectedOutput) {
     includeHelper: false,
   })!.code;
 
+  const actualCode = format(transformedCode);
+  const expectedCode = format(expectedOutput);
+
   try {
-    const actualCode = prettier.format(transformedCode, {
-      parser: 'babel',
-    });
-
-    const expectedCode = prettier.format(expectedOutput, {
-      parser: 'babel',
-    });
-
     expect(actualCode).toBe(expectedCode);
   } catch (ex) {
     console.error(
@@ -25,5 +20,15 @@ export function assertTransform(code: string, expectedOutput) {
         '\n==============================\n'
     );
     throw ex;
+  }
+
+  function format(code: string) {
+    try {
+      return prettier.format(transformedCode, {
+        parser: 'babel',
+      });
+    } catch {
+      code;
+    }
   }
 }

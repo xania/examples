@@ -19,23 +19,20 @@ export default defineConfig({
   server: {
     port: 3000,
     host: "0.0.0.0"
-  }
-  // define: {
-  //   "import.meta.env.BASE_URL": '"/"'
-  // },
-  // plugins: [
-  //   XaniaSsrPlugin({
-  //     routes: {
-  //       // "/pages/todomvc.tsx": () => import("./pages/todomvc")
-  //     },
-  //     async exists(file) {
-  //       try {
-  //         const stats = await fs.stat(file, {});
-  //         return stats.isFile();
-  //       } catch (err) {
-  //         return false;
-  //       }
-  //     }
-  //   })
-  // ]
+  },
+  plugins: [
+    XaniaSsrPlugin({
+      routes: {
+        // "/pages/todomvc.tsx": () => import("./pages/todomvc")
+      },
+      async exists(file) {
+        try {
+          const stats = await fs.stat(file, {});
+          return stats.isFile();
+        } catch (err) {
+          return false;
+        }
+      }
+    })
+  ]
 });

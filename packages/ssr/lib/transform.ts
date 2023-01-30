@@ -8,6 +8,7 @@ import {
   ExportDefaultDeclaration,
   ExportNamedDeclaration,
   Expression,
+  ForStatement,
   FunctionDeclaration,
   FunctionExpression,
   ImportDeclaration,
@@ -42,7 +43,8 @@ type TypedNode =
   | ExportDefaultDeclaration
   | ClassDeclaration
   | ImportDeclaration
-  | VariableDeclarator;
+  | VariableDeclarator
+  | ForStatement;
 
 export type TransfromOptions = {
   entry: string;
@@ -58,7 +60,7 @@ export function transform(
     ecmaVersion: 'latest',
   }) as Program;
 
-  const rootScope = Scope.fromBody(ast);
+  const rootScope = new Scope();
   const scopes = [rootScope];
   const stack: (readonly [Scope, TypedNode, boolean])[] = [];
   // let entryDeclaration: acorn.Node | undefined = undefined;
@@ -113,9 +115,7 @@ export function transform(
         const blockScope = Scope.fromBody(node, scope);
         scopes.push(blockScope);
       } else if (node.type === 'FunctionDeclaration') {
-        if (node.id?.name === 'listen') debugger;
-
-        const funcScope = Scope.fromParams(node.params, scope);
+        const funcScope = Scope.fromFunction(node, scope);
         scopes.push(funcScope);
 
         if (!scope.parent) {
@@ -154,7 +154,7 @@ export function transform(
         node.type === 'FunctionExpression' ||
         node.type === 'ArrowFunctionExpression'
       ) {
-        const funcScope = Scope.fromParams(node.params, scope);
+        const funcScope = Scope.fromFunction(node, scope);
         scopes.push(funcScope);
 
         if (
@@ -200,7 +200,9 @@ export function transform(
 
       if (
         node.type === 'BlockStatement' ||
-        node.type === 'FunctionDeclaration'
+        node.type === 'FunctionDeclaration' ||
+        node.type === 'FunctionExpression' ||
+        node.type === 'ArrowFunctionExpression'
       ) {
         scopes.pop();
       }
@@ -225,6 +227,7 @@ function __id(str: string) {
   }
 
   const retval = String.fromCharCode(...bits);
+
   return retval;
 }
 
@@ -236,14 +239,36 @@ class Scope {
   public variables = new Set<string>();
   constructor(public parent?: Scope) {}
 
+  static fromFunction(
+    node: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression,
+    parent?: Scope
+  ) {
+    const funcScope = this.fromParams(node.params, parent);
+    if (node.body.type === 'BlockStatement') funcScope.init(node.body);
+    return funcScope;
+  }
+
   static fromParams(patterns: Pattern[], parent?: Scope) {
     const scope = new Scope(parent);
     const { variables } = scope;
 
-    for (let i = 0, len = patterns.length; i < len; i++) {
-      const pat = patterns[i];
+    const stack: Pattern[] = patterns.slice(0);
+    while (stack.length) {
+      const pat = stack.pop()!;
       if (pat.type === 'Identifier') {
         variables.add(pat.name);
+      } else if (pat.type === 'ArrayPattern') {
+        for (const elt of pat.elements) {
+          if (elt) {
+            stack.push(elt);
+          }
+        }
+      } else if (pat.type === 'AssignmentPattern') {
+        stack.push(pat.left);
+      } else if (pat.type === 'RestElement') {
+        stack.push(pat.argument);
+      } else {
+        debugger;
       }
     }
 
@@ -264,12 +289,15 @@ class Scope {
         const node = n as TypedNode;
         const parent = p as TypedNode;
 
-        if (node.type === 'BlockStatement') {
+        if (node.type === 'ForStatement') {
+          this.skip();
+        } else if (node.type === 'BlockStatement') {
           if (node !== root) {
             this.skip();
           }
         } else if (node.type === 'FunctionDeclaration') {
           const funName = node.id?.name;
+
           if (funName) {
             variables.add(funName);
           }
@@ -291,7 +319,7 @@ class Scope {
       return false;
     }
 
-    let parent = this.parent;
+    let parent: Scope | undefined = this.parent;
     while (parent) {
       if (parent.variables.has(variable)) return true;
       parent = parent.parent;
@@ -304,13 +332,11 @@ class Scope {
 
 function getTrappedReferences(
   funcDecl: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression,
-  scope: Scope
+  funcScope: Scope
 ) {
   const funcBody = funcDecl.body;
   const stack: (Expression | Statement | SpreadElement)[] = [];
-  const funcScope: Scope = new Scope();
   if (funcBody.type === 'BlockStatement') {
-    funcScope.init(funcBody);
     for (let i = funcBody.body.length - 1; i >= 0; i--) {
       stack.push(funcBody.body[i]);
     }
@@ -331,20 +357,16 @@ function getTrappedReferences(
         this.skip();
       } else if (node.type === 'MemberExpression') {
         skip.add(node.property);
-      } else if (node.type === 'CallExpression') {
-        skip.add(node.callee);
+        // } else if (node.type === 'CallExpression') {
+        //   skip.add(node.callee);
       } else if (node.type === 'Property') {
-        this.skip();
-      } else if (node.type === 'Identifier') {
-        if (node.name === 'handler') {
-          debugger;
+        if (node.method) {
+          this.skip();
+        } else {
+          skip.add(node.key);
         }
-
-        if (
-          !funcScope.variables.has(node.name) &&
-          !result.includes(node.name) &&
-          scope.isTrapped(node.name)
-        ) {
+      } else if (node.type === 'Identifier') {
+        if (!result.includes(node.name) && funcScope.isTrapped(node.name)) {
           result.push(node.name);
         }
       }

@@ -140,7 +140,7 @@ describe('export declarations', () => {
 
   it('local function with trapped params', () => {
     const code = `
-      export function App(a) {
+      export function App(a = 1) {
         function Component() {
           return a;
         }
@@ -154,7 +154,7 @@ describe('export declarations', () => {
           },
         [a]
       );
-      export function App(a) {
+      export function App(a = 1) {
         const Component = bjnqennpkd(a);
       }
       __closure("App", App);
@@ -277,21 +277,51 @@ describe('export declarations', () => {
     `;
 
     const expected = `
+      const vvlsdnrcft = __closure("vvlsdnrcft", (result) => {
+        return {
+          dispose: bgpxhhyxca,
+        };
+      });
       export const bgpxhhyxca = __closure("bgpxhhyxca", function () {
         // dispose
       });
-      export const thtvblkpur = __closure("thtvblkpur", function lazy() {
-        return "Hello lazy";
-      })  
       export function render() {
-        return compile().then(result => {
-          return {
-            dispose:bgpxhhyxca,
-          };
-        })
+        return compile().then(vvlsdnrcft);
       }
       __closure("render", render);
-      export const lazy = thtvblkpur;
+      export function lazy() {
+        return "Hello lazy";
+      }
+      __closure("lazy", lazy);
+      `;
+
+    assertTransform(code, expected);
+  });
+
+  it('delay', () => {
+    const code = `
+      export function delay(value, ts = 1000) {
+        return new Promise((resolve, reject) => {
+          setTimeout(function () {
+            resolve(value);
+          }, ts);
+        })
+      }
+    `;
+
+    const expected = `
+      const kgwslednlo = (value, ts) =>
+        __closure("kgwslednlo", (resolve, reject) => {
+            setTimeout(yuljedkoma(value), ts);
+          }, [value, ts] );
+      const yuljedkoma = (resolve, value) =>
+        __closure("yuljedkoma", function () {
+            resolve(value);
+          }, [value] );
+      export function delay(value, ts = 1000) {
+        return new Promise(kgwslednlo(value, ts));
+      }
+      __closure("delay", delay);
     `;
 
     assertTransform(code, expected);
