@@ -16,7 +16,6 @@ import {
   Program,
   Property,
   SpreadElement,
-  Statement,
   VariableDeclarator,
 } from 'estree';
 import MagicString from 'magic-string';
@@ -43,7 +42,8 @@ type TypedNode =
   | ClassDeclaration
   | ImportDeclaration
   | VariableDeclarator
-  | ForStatement;
+  | ForStatement
+  | Program;
 
 export type TransfromOptions = {
   entry: string;
@@ -95,36 +95,80 @@ export function transform(
     return id;
   }
 
+  const skipEnter = new Set();
   walk(ast, {
     enter(n, p) {
       const node = n as TypedNode;
       const parent = p as TypedNode;
       let scope = scopes[scopes.length - 1]!;
 
-      if (node.type === 'ClassDeclaration') {
+      if (skipEnter.delete(node)) {
         this.skip();
-      } else if (node.type === 'BlockStatement') {
-        const blockScope = Scope.fromBody(node, scope);
-        scopes.push(blockScope);
       } else if (
         node.type === 'FunctionDeclaration' ||
         node.type === 'FunctionExpression' ||
         node.type === 'ArrowFunctionExpression'
       ) {
-        const funcScope = Scope.fromFunction(node, scope);
-        const references = getReferences(node);
-        funcScope.references = references;
+        const funcScope = new Scope(scope);
+        funcScope.fromPatters(node.params);
         scopes.push(funcScope);
 
-        // for (const ref of references) {
-        //   const alias = funcScope.getAlias(ref.name);
-        //   if (alias !== false) {
-        //     debugger;
-        //   }
-        // }
+        for (const p of node.params) skipEnter.add(p);
+        if (node.type === 'FunctionDeclaration' && node.id) {
+          skipEnter.add(node.id);
+          const funName = node.id?.name;
 
+          if (funName) {
+            scope.variables.add(funName);
+          }
+        }
+      } else if (node.type === 'MemberExpression') {
+        skipEnter.add(node.property);
+      } else if (node.type === 'ForStatement') {
+        this.skip();
+      } else if (node.type === 'Property') {
+        skipEnter.add(node.key);
+      } else if (node.type === 'VariableDeclarator') {
+        skipEnter.add(node.id);
+        scope.fromPatters([node.id]);
+      } else if (node.type === 'Identifier') {
+        scope.references.push(node);
+      } else if (
+        node.type === 'ClassDeclaration' ||
+        node.type === 'ClassExpression'
+      ) {
+        this.skip();
+      }
+    },
+    leave(n, p) {
+      const node = n as TypedNode;
+      const parent = p as TypedNode;
+      let scope = scopes[scopes.length - 1]!;
+
+      const isRoot =
+        !parent ||
+        parent.type === 'ExportDefaultDeclaration' ||
+        parent.type === 'Program' ||
+        parent.type === 'ExportNamedDeclaration';
+
+      function popScope() {
+        const blockScope = scopes.pop()!;
+        const parentScope = scopes[scopes.length - 1]!;
+        for (const ref of blockScope.trappedReferences()) {
+          parentScope.references.push(ref);
+        }
+      }
+
+      if (node.type === 'Identifier') {
+        const idName = node.name;
+        const replacement = scope.substitute(idName, false);
+        if (replacement) {
+          magicString.remove(node.start, node.end);
+          magicString.appendLeft(node.start, replacement);
+        }
+      } else {
         if (node.type === 'FunctionDeclaration') {
-          if (!scope.parent) {
+          if (isRoot) {
             if (parent.type === 'ExportDefaultDeclaration') {
               const id = node.id?.name ?? __id(code, parent);
               magicString.appendRight(
@@ -133,33 +177,28 @@ export function transform(
               );
               magicString.appendRight(parent.start, `);`);
               magicString.appendRight(parent.end, ` ${id};`);
-
               magicString.move(node.start, node.end, parent.start);
             } else {
               const funName = node.id?.name ?? 'default';
-
               if (parent.type !== 'ExportNamedDeclaration') {
                 magicString.appendRight(node.start, `export `);
               }
-
               magicString.appendLeft(
                 node.end,
                 `;__closure("${funName}", ${funName});`
               );
             }
           } else {
-            const args = funcScope.getTrapped(references);
+            const args: string[] = uniqueParams(scope.trappedReferences());
+            //   const args = funcScope.getTrapped(references);
             const id = exportFunction(node, args);
-            // create local reference
-
-            magicString.appendRight(node.end, `const ${node.id!.name} = ${id}`);
             if (args.length > 0) {
-              funcScope.aliases.set(node.id!.name, `${id}(${args.join(',')})`);
-              magicString.appendRight(node.end, `(${args.join(',')})`);
+              scope.parent?.aliases.set(node.id!.name, { id, args });
             } else {
-              funcScope.aliases.set(node.id!.name, `${id}`);
+              scope.parent?.aliases.set(node.id!.name, { id });
             }
           }
+          popScope();
         } else if (
           node.type === 'FunctionExpression' ||
           node.type === 'ArrowFunctionExpression'
@@ -174,65 +213,42 @@ export function transform(
               magicString.prependRight(node.start, 'async function ');
             } else magicString.prependRight(node.start, 'function ');
 
-            const args = funcScope.getTrapped(references);
-            const id = exportFunction(node, args);
-
+            const trappedReferences = scope.trappedReferences();
+            const params: string[] = uniqueParams(trappedReferences);
+            const args: string[] = unique(
+              trappedReferences.map((x) => scope.substitute(x.name) ?? x.name)
+            );
+            // const args = funcScope.getTrapped(references);
+            const id = exportFunction(node, params);
             // const [id, args] = exportFunction(node, funcScope);
             magicString.appendLeft(node.start, ':' + id);
             if (args.length > 0) {
               magicString.appendLeft(node.start, `(${args.join(',')})`);
             }
-          } else if (scope.parent) {
-            //       const funcNode = node as any as acorn.Node;
+          } else if (!isRoot) {
+            //   //       const funcNode = node as any as acorn.Node;
+            const trappedReferences = scope.trappedReferences();
+            const params: string[] = uniqueParams(trappedReferences);
+            const args: string[] = unique(
+              trappedReferences.map((x) => scope.substitute(x.name) ?? x.name)
+            );
             const id = __id(code, node);
-            const args = funcScope.getTrapped(references);
-
-            // create local reference
+            if (id === 'narvlemiuw') debugger;
+            // subsctitute expression reference
             magicString.appendLeft(node.start, `${id}`);
-            magicString.appendRight(node.start, `const ${id} = `);
 
-            if (args.length > 0) {
+            magicString.appendRight(node.start, `export const ${id} = `);
+            if (params.length > 0) {
               magicString.appendLeft(node.start, `(${args.join(',')})`);
-              magicString.appendRight(node.start, `(${args.join(',')}) => `);
-              magicString.appendLeft(node.end, `, [${args.join(',')}]`);
+              magicString.appendRight(node.start, `(${params.join(',')}) => `);
+              magicString.appendLeft(node.end, `, [${params.join(',')}]`);
             }
-
             // export definition
             magicString.appendRight(node.start, `__closure("${id}", `);
             magicString.appendLeft(node.end, `);`);
-
             magicString.move(node.start, node.end, exportIndex);
           }
-        }
-      }
-    },
-    leave(n, p) {
-      const node = n as TypedNode;
-      const parent = p as TypedNode;
-
-      if (
-        node.type === 'BlockStatement' ||
-        node.type === 'FunctionDeclaration' ||
-        node.type === 'FunctionExpression' ||
-        node.type === 'ArrowFunctionExpression'
-      ) {
-        const scope = scopes.pop()!;
-
-        if (node.type === 'FunctionDeclaration') {
-          for (const [id, replacement] of scope.aliases) {
-            let parent = scope.parent;
-            while (parent) {
-              if (parent.references)
-                for (const ref of parent.references) {
-                  if (ref.name === id) {
-                    magicString.remove(ref.start, ref.end);
-                    magicString.appendLeft(ref.start, replacement);
-                  }
-                }
-
-              parent = parent.parent;
-            }
-          }
+          popScope();
         }
       }
     },
@@ -268,31 +284,69 @@ function throwNever(message: string, type: never) {
   throw Error(message + type);
 }
 
+type Replacement = {
+  id: string;
+  args?: string[];
+};
 class Scope {
+  substitute(variable: string, recursive = true) {
+    let scope: Scope | undefined = this;
+    while (scope) {
+      const { aliases, variables } = scope;
+      if (aliases.has(variable)) {
+        const replacement = aliases.get(variable)!;
+        if (replacement.args?.length) {
+          return `${replacement.id}(${replacement.args.join(',')})`;
+        } else {
+          return `${replacement.id}`;
+        }
+      }
+      if (variables.has(variable)) {
+        return null;
+      }
+      if (!recursive) break;
+
+      scope = scope.parent;
+    }
+    return null;
+  }
+  trappedReferences() {
+    const { references } = this;
+    const result: Identifier[] = [];
+    for (const ref of references) {
+      if (this.isTrapped(ref.name)) {
+        result.push(ref);
+      }
+    }
+    return result;
+  }
   public variables = new Set<string>();
-  public references: Identifier[] | undefined;
-  public aliases = new Map<string, string>();
+  public references: Identifier[] = [];
+  public aliases = new Map<string, Replacement>();
 
   constructor(public parent?: Scope) {}
 
-  static fromFunction(
-    node: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression,
-    parent?: Scope
-  ) {
-    const funcScope = this.fromParams(node.params, parent);
-    if (node.body.type === 'BlockStatement') funcScope.init(node.body);
-    return funcScope;
-  }
-
-  static fromParams(patterns: Pattern[], parent?: Scope) {
-    const scope = new Scope(parent);
-    const { variables } = scope;
+  fromPatters(patterns: Pattern[]) {
+    const { variables } = this;
 
     const stack: Pattern[] = patterns.slice(0);
     while (stack.length) {
       const pat = stack.pop()!;
+
       if (pat.type === 'Identifier') {
-        variables.add(pat.name);
+        variables.add(pat.name!);
+      } else if (pat.type === 'ObjectPattern') {
+        for (const p of pat.properties) {
+          if (p.type === 'Property') {
+            if (p.key.type === 'Identifier') {
+              variables.add(p.key.name);
+            } else {
+              debugger;
+            }
+          } else if (p.type === 'RestElement') {
+            stack.push(p.argument);
+          }
+        }
       } else if (pat.type === 'ArrayPattern') {
         for (const elt of pat.elements) {
           if (elt) {
@@ -307,8 +361,6 @@ class Scope {
         debugger;
       }
     }
-
-    return scope;
   }
 
   static fromBody(root: BlockStatement | Program, parent?: Scope) {
@@ -364,6 +416,8 @@ class Scope {
                   stack.push(elt);
                 }
               }
+            } else if (pattern.type === 'AssignmentPattern') {
+              stack.push(pattern.left);
             } else {
               debugger;
             }
@@ -436,5 +490,23 @@ function getReferences(
     },
   });
 
+  return result;
+}
+
+function uniqueParams(references: Identifier[]) {
+  const result: string[] = [];
+  for (const id of references) {
+    const name = id.name;
+    if (!result.includes(name)) result.push(name);
+  }
+  return result;
+}
+
+function unique(values: string[]) {
+  const result: string[] = [];
+  for (const id of values) {
+    const name = id;
+    if (!result.includes(name)) result.push(name);
+  }
   return result;
 }

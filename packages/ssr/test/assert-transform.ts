@@ -16,7 +16,7 @@ export function assertTransform(code: string, expectedOutput) {
   } catch (ex) {
     console.error(
       '\n==============================\n' +
-        transformedCode +
+        actualCode +
         '\n==============================\n'
     );
     throw ex;
@@ -27,8 +27,9 @@ export function assertTransform(code: string, expectedOutput) {
       return prettier.format(code, {
         parser: 'babel',
       });
-    } catch {
-      code;
+    } catch (err) {
+      console.error(err);
+      return code;
     }
   }
 }

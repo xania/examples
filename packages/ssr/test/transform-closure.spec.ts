@@ -88,9 +88,7 @@ describe('export declarations', () => {
     `;
     const expected = `
       export const Compodrlee = __closure("Compodrlee", function Component() {});
-      export function App() {
-        const Component = Compodrlee;
-      }
+      export function App() {}
       __closure("App", App);
     `;
     assertTransform(code, expected);
@@ -105,7 +103,6 @@ describe('export declarations', () => {
     const expected = `
       export const Compohirlh = __closure("Compohirlh", async function Component() {});
       export function App() {
-        const Component = Compohirlh;
       }
       __closure("App", App);
     `;
@@ -119,19 +116,19 @@ describe('export declarations', () => {
         function Component() {
           return a;
         }
+        return Component();
       }
     `;
     const expected = `
-      export const Compobeevi = (a) => __closure(
-        "Compobeevi",
-          function Component() {
+      export const Compobeevi = (a) =>
+        __closure("Compobeevi", function Component() {
             return a;
-          },
-        [a]
-      );
+          }, [a]
+        );
       export function App() {
         const a = 1;
-        const Component = Compobeevi(a);
+
+        return Compobeevi(a)();
       }
       __closure("App", App);
       `;
@@ -147,18 +144,14 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const Compocyfor = (a) => __closure(
-        "Compocyfor",
-          function Component() {
+      export const Compocyfor = (a) =>
+        __closure("Compocyfor", function Component() {
             return a;
-          },
-        [a]
-      );
-      export function App(a = 1) {
-        const Component = Compocyfor(a);
-      }
+          }, [a]
+        );
+      export function App(a = 1) {}
       __closure("App", App);
-      `;
+    `;
     assertTransform(code, expected);
   });
 
@@ -174,9 +167,7 @@ describe('export declarations', () => {
       export const Compoqycyk = __closure("Compoqycyk", function Component() {
         return a;
       });
-      export function App() {
-        const Component = Compoqycyk;
-      }
+      export function App() {}
       __closure("App", App);
       `;
     assertTransform(code, expected);
@@ -192,7 +183,7 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      const bdkhmqcefk = (a) =>
+      export const bdkhmqcefk = (a) =>
         __closure("bdkhmqcefk", function () { return a; }, [a] );
       export function App() {
         const a = 1;
@@ -213,7 +204,7 @@ describe('export declarations', () => {
     `;
 
     const expect = `
-      const gkdfmnbhok = __closure("gkdfmnbhok", function (a) {
+      export const gkdfmnbhok = __closure("gkdfmnbhok", function (a) {
         return a;
       });
       export function view() {
@@ -277,13 +268,13 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      const pqhvggfmcp = __closure("pqhvggfmcp", (result) => {
+    export const qukeskahmn = __closure("qukeskahmn", function () {
+      // dispose
+    });
+      export const pqhvggfmcp = __closure("pqhvggfmcp", (result) => {
         return {
           dispose: qukeskahmn,
         };
-      });
-      export const qukeskahmn = __closure("qukeskahmn", function () {
-        // dispose
       });
       export function render() {
         return compile().then(pqhvggfmcp);
@@ -310,14 +301,14 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      const kogcvckfyp = (value, ts) =>
+      export const rdnborkqtx = (resolve, value) =>
+        __closure("rdnborkqtx", function () {
+          resolve(value);
+        }, [resolve, value] );
+      export const kogcvckfyp = (value, ts) =>
         __closure("kogcvckfyp", (resolve, reject) => {
             setTimeout(rdnborkqtx(resolve, value), ts);
           }, [value, ts] );
-      const rdnborkqtx = (resolve, value) =>
-        __closure("rdnborkqtx", function () {
-            resolve(value);
-          }, [resolve, value] );
       export function delay(value, ts = 1000) {
         return new Promise(kogcvckfyp(value, ts));
       }
@@ -327,7 +318,7 @@ describe('export declarations', () => {
     assertTransform(code, expected);
   });
 
-  it('reference local function', () => {
+  it('local function reference', () => {
     const code = `
       export function view(a) {
         function handler() {
@@ -339,18 +330,15 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      const kogcvckfyp = (value, ts) =>
-        __closure("kogcvckfyp", (resolve, reject) => {
-            setTimeout(rdnborkqtx(resolve, value), ts);
-          }, [value, ts] );
-      const rdnborkqtx = (resolve, value) =>
-        __closure("rdnborkqtx", function () {
-            resolve(value);
-          }, [resolve, value] );
-      export function delay(value, ts = 1000) {
-        return new Promise(kogcvckfyp(value, ts));
+      export const handlgyxuw = (a) =>
+        __closure("handlgyxuw",function handler() {
+            console.log(a);
+          }, [a]
+        );
+      export function view(a) {
+        return { a: handlgyxuw(a) };
       }
-      __closure("delay", delay);
+      __closure("view", view);
     `;
 
     assertTransform(code, expected);

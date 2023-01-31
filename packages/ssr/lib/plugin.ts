@@ -82,6 +82,7 @@ export function XaniaSsrPlugin(options: XaniaSsrOptions): Plugin {
     transform(code, id, options) {
       const match = id.match(/\.[tj]sx?$/);
       if (match) {
+        if (id.endsWith('id.ts')) return;
         // if (id.endsWith('factory.ts')) debugger;
         // const names = match[1].split(',');
         return transform(code, { entry: 'view' }); // , (x) => names.includes(x));
