@@ -326,4 +326,33 @@ describe('export declarations', () => {
 
     assertTransform(code, expected);
   });
+
+  it('reference local function', () => {
+    const code = `
+      export function view(a) {
+        function handler() {
+          console.log(a);
+        }
+
+        return { a: handler };
+      }
+    `;
+
+    const expected = `
+      const kogcvckfyp = (value, ts) =>
+        __closure("kogcvckfyp", (resolve, reject) => {
+            setTimeout(rdnborkqtx(resolve, value), ts);
+          }, [value, ts] );
+      const rdnborkqtx = (resolve, value) =>
+        __closure("rdnborkqtx", function () {
+            resolve(value);
+          }, [resolve, value] );
+      export function delay(value, ts = 1000) {
+        return new Promise(kogcvckfyp(value, ts));
+      }
+      __closure("delay", delay);
+    `;
+
+    assertTransform(code, expected);
+  });
 });

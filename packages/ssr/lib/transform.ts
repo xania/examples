@@ -70,10 +70,9 @@ export function transform(
 
   function exportFunction(
     node: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression,
-    scope: Scope
+    args: string[]
   ) {
     const id = __id(code, node);
-    const args = getTrappedReferences(node, scope);
 
     if (args.length > 0) {
       // magicString.appendLeft(node.start, `(${args.join(',')})`);
@@ -93,7 +92,7 @@ export function transform(
 
     magicString.move(node.start, node.end, exportIndex);
 
-    return [id, args] as const;
+    return id;
   }
 
   walk(ast, {
@@ -107,83 +106,103 @@ export function transform(
       } else if (node.type === 'BlockStatement') {
         const blockScope = Scope.fromBody(node, scope);
         scopes.push(blockScope);
-      } else if (node.type === 'FunctionDeclaration') {
-        const funcScope = Scope.fromFunction(node, scope);
-        scopes.push(funcScope);
-
-        if (!scope.parent) {
-          if (parent.type === 'ExportDefaultDeclaration') {
-            const id = node.id?.name ?? __id(code, parent);
-            magicString.appendRight(
-              node.start,
-              `const ${id} = __closure("${id}", `
-            );
-            magicString.appendRight(parent.start, `);`);
-            magicString.appendRight(parent.end, ` ${id};`);
-
-            magicString.move(node.start, node.end, parent.start);
-          } else {
-            const funName = node.id?.name ?? 'default';
-
-            if (parent.type !== 'ExportNamedDeclaration') {
-              magicString.appendRight(node.start, `export `);
-            }
-
-            magicString.appendLeft(
-              node.end,
-              `;__closure("${funName}", ${funName});`
-            );
-          }
-        } else {
-          const [id, args] = exportFunction(node, funcScope);
-          // create local reference
-
-          magicString.appendRight(node.end, `const ${node.id!.name} = ${id}`);
-          if (args.length > 0) {
-            magicString.appendRight(node.end, `(${args.join(',')})`);
-          }
-        }
       } else if (
+        node.type === 'FunctionDeclaration' ||
         node.type === 'FunctionExpression' ||
         node.type === 'ArrowFunctionExpression'
       ) {
         const funcScope = Scope.fromFunction(node, scope);
+        const references = getReferences(node);
+        funcScope.references = references;
         scopes.push(funcScope);
 
-        if (
-          parent.type === 'Property' &&
-          parent.method &&
-          parent.kind === 'init'
+        // for (const ref of references) {
+        //   const alias = funcScope.getAlias(ref.name);
+        //   if (alias !== false) {
+        //     debugger;
+        //   }
+        // }
+
+        if (node.type === 'FunctionDeclaration') {
+          if (!scope.parent) {
+            if (parent.type === 'ExportDefaultDeclaration') {
+              const id = node.id?.name ?? __id(code, parent);
+              magicString.appendRight(
+                node.start,
+                `const ${id} = __closure("${id}", `
+              );
+              magicString.appendRight(parent.start, `);`);
+              magicString.appendRight(parent.end, ` ${id};`);
+
+              magicString.move(node.start, node.end, parent.start);
+            } else {
+              const funName = node.id?.name ?? 'default';
+
+              if (parent.type !== 'ExportNamedDeclaration') {
+                magicString.appendRight(node.start, `export `);
+              }
+
+              magicString.appendLeft(
+                node.end,
+                `;__closure("${funName}", ${funName});`
+              );
+            }
+          } else {
+            const args = funcScope.getTrapped(references);
+            const id = exportFunction(node, args);
+            // create local reference
+
+            magicString.appendRight(node.end, `const ${node.id!.name} = ${id}`);
+            if (args.length > 0) {
+              funcScope.aliases.set(node.id!.name, `${id}(${args.join(',')})`);
+              magicString.appendRight(node.end, `(${args.join(',')})`);
+            } else {
+              funcScope.aliases.set(node.id!.name, `${id}`);
+            }
+          }
+        } else if (
+          node.type === 'FunctionExpression' ||
+          node.type === 'ArrowFunctionExpression'
         ) {
-          if (node.async) {
-            magicString.remove(parent.start, parent.key.start);
-            magicString.prependRight(node.start, 'async function ');
-          } else magicString.prependRight(node.start, 'function ');
-          const [id, args] = exportFunction(node, funcScope);
-          magicString.appendLeft(node.start, ':' + id);
-          if (args.length > 0) {
-            magicString.appendLeft(node.start, `(${args.join(',')})`);
+          if (
+            parent.type === 'Property' &&
+            parent.method &&
+            parent.kind === 'init'
+          ) {
+            if (node.async) {
+              magicString.remove(parent.start, parent.key.start);
+              magicString.prependRight(node.start, 'async function ');
+            } else magicString.prependRight(node.start, 'function ');
+
+            const args = funcScope.getTrapped(references);
+            const id = exportFunction(node, args);
+
+            // const [id, args] = exportFunction(node, funcScope);
+            magicString.appendLeft(node.start, ':' + id);
+            if (args.length > 0) {
+              magicString.appendLeft(node.start, `(${args.join(',')})`);
+            }
+          } else if (scope.parent) {
+            //       const funcNode = node as any as acorn.Node;
+            const id = __id(code, node);
+            const args = funcScope.getTrapped(references);
+
+            // create local reference
+            magicString.appendLeft(node.start, `${id}`);
+            magicString.appendRight(node.start, `const ${id} = `);
+
+            if (args.length > 0) {
+              magicString.appendLeft(node.start, `(${args.join(',')})`);
+              magicString.appendRight(node.start, `(${args.join(',')}) => `);
+              magicString.appendLeft(node.end, `, [${args.join(',')}]`);
+            }
+
+            // export definition
+            magicString.appendRight(node.start, `__closure("${id}", `);
+            magicString.appendLeft(node.end, `);`);
+
+            magicString.move(node.start, node.end, exportIndex);
           }
-        } else if (scope.parent) {
-          //       const funcNode = node as any as acorn.Node;
-          const id = __id(code, node);
-          const args = getTrappedReferences(node, funcScope);
-
-          // create local reference
-          magicString.appendLeft(node.start, `${id}`);
-          magicString.appendRight(node.start, `const ${id} = `);
-
-          if (args.length > 0) {
-            magicString.appendLeft(node.start, `(${args.join(',')})`);
-            magicString.appendRight(node.start, `(${args.join(',')}) => `);
-            magicString.appendLeft(node.end, `, [${args.join(',')}]`);
-          }
-
-          // export definition
-          magicString.appendRight(node.start, `__closure("${id}", `);
-          magicString.appendLeft(node.end, `);`);
-
-          magicString.move(node.start, node.end, exportIndex);
         }
       }
     },
@@ -197,7 +216,24 @@ export function transform(
         node.type === 'FunctionExpression' ||
         node.type === 'ArrowFunctionExpression'
       ) {
-        scopes.pop();
+        const scope = scopes.pop()!;
+
+        if (node.type === 'FunctionDeclaration') {
+          for (const [id, replacement] of scope.aliases) {
+            let parent = scope.parent;
+            while (parent) {
+              if (parent.references)
+                for (const ref of parent.references) {
+                  if (ref.name === id) {
+                    magicString.remove(ref.start, ref.end);
+                    magicString.appendLeft(ref.start, replacement);
+                  }
+                }
+
+              parent = parent.parent;
+            }
+          }
+        }
       }
     },
   });
@@ -234,6 +270,9 @@ function throwNever(message: string, type: never) {
 
 class Scope {
   public variables = new Set<string>();
+  public references: Identifier[] | undefined;
+  public aliases = new Map<string, string>();
+
   constructor(public parent?: Scope) {}
 
   static fromFunction(
@@ -334,6 +373,15 @@ class Scope {
     });
   }
 
+  getTrapped(references: Identifier[]) {
+    const result: string[] = [];
+    for (const id of references) {
+      const name = id.name;
+      if (this.isTrapped(name) && !result.includes(name)) result.push(name);
+    }
+    return result;
+  }
+
   isTrapped(variable: string) {
     const { variables } = this;
     if (variables.has(variable)) {
@@ -351,31 +399,27 @@ class Scope {
   }
 }
 
-function getTrappedReferences(
-  funcDecl: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression,
-  funcScope: Scope
+function getReferences(
+  funcDecl: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression
 ) {
-  const funcBody = funcDecl.body;
-  const stack: (Expression | Statement | SpreadElement)[] = [];
-  if (funcBody.type === 'BlockStatement') {
-    for (let i = funcBody.body.length - 1; i >= 0; i--) {
-      stack.push(funcBody.body[i]);
-    }
-  } else {
-    stack.push(funcBody);
-  }
-
-  const result: string[] = [];
-
+  const result: Identifier[] = [];
   const skip = new Set();
 
-  walk(funcBody, {
+  walk(funcDecl, {
     enter(n, p) {
       const node = n as TypedNode;
       const parent = p as TypedNode;
 
       if (skip.delete(node)) {
         this.skip();
+      } else if (
+        node.type === 'FunctionExpression' ||
+        node.type === 'ArrowFunctionExpression'
+      ) {
+        for (const p of node.params) skip.add(p);
+      } else if (node.type === 'FunctionDeclaration') {
+        skip.add(node.id);
+        for (const p of node.params) skip.add(p);
       } else if (node.type === 'MemberExpression') {
         skip.add(node.property);
         // } else if (node.type === 'CallExpression') {
@@ -387,9 +431,7 @@ function getTrappedReferences(
           skip.add(node.key);
         }
       } else if (node.type === 'Identifier') {
-        if (!result.includes(node.name) && funcScope.isTrapped(node.name)) {
-          result.push(node.name);
-        }
+        result.push(node);
       }
     },
   });

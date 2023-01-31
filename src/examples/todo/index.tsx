@@ -129,12 +129,8 @@ function TodoList() {
   const row = useContext<TodoItem>();
   const editing = row.lazy("editing");
 
-  let clearSelection: Function | null = null;
   function select(e: EventContext<TodoItem, Event>) {
-    if (clearSelection instanceof Function) {
-      clearSelection();
-    }
-    clearSelection = editing.select(e.data);
+    editing.select(e.data);
   }
   function setCompleted(e: EventContext<TodoItem, Event>) {
     const data = e.data;
@@ -170,16 +166,16 @@ function TodoList() {
               value={row.get("label")}
               blur={(evnt) => {
                 // evnt.node.value = evnt.data.get("label");
-                clearSelection();
+                editing.clear();
               }}
               keyup={(evnt: EventContext<TodoItem, KeyboardEvent>) => {
                 if (evnt.event.key === "Enter") {
                   const target = evnt.event.target as HTMLInputElement;
                   evnt.data.label = target.value;
                   items.update(() => [evnt.data]);
-                  clearSelection();
+                  editing.clear();
                 } else if (evnt.event.key === "Escape") {
-                  clearSelection();
+                  editing.clear();
                 }
               }}
             >
