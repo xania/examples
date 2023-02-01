@@ -71,10 +71,10 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      const evclwfvrqk = __closure("evclwfvrqk", function () {
+      const eacqwfarqk = __closure("eacqwfarqk", function () {
         return "Hello Anonymous";
       });
-      export default evclwfvrqk;
+      export default eacqwfarqk;
     `;
     assertTransform(code, expected);
   });
@@ -87,7 +87,7 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const Compodrlee = __closure("Compodrlee", function Component() {});
+      export const Compodfldr = __closure("Compodfldr", function Component() {});
       export function App() {}
       __closure("App", App);
     `;
@@ -101,7 +101,7 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const Compohirlh = __closure("Compohirlh", async function Component() {});
+      export const Compoqfmby = __closure("Compoqfmby", async function Component() {});
       export function App() {
       }
       __closure("App", App);
@@ -120,15 +120,15 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const Compobeevi = (a) =>
-        __closure("Compobeevi", function Component() {
+      export const Compoeeivq = (a) =>
+        __closure("Compoeeivq", function Component() {
             return a;
           }, [a]
         );
       export function App() {
         const a = 1;
 
-        return Compobeevi(a)();
+        return Compoeeivq(a)();
       }
       __closure("App", App);
       `;
@@ -144,8 +144,8 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const Compocyfor = (a) =>
-        __closure("Compocyfor", function Component() {
+      export const Compowyekn = (a) =>
+        __closure("Compowyekn", function Component() {
             return a;
           }, [a]
         );
@@ -164,7 +164,7 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const Compoqycyk = __closure("Compoqycyk", function Component() {
+      export const Compoqechi = __closure("Compoqechi", function Component() {
         return a;
       });
       export function App() {}
@@ -183,11 +183,11 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const bdkhmqcefk = (a) =>
-        __closure("bdkhmqcefk", function () { return a; }, [a] );
+      export const epxhhokqfk = (a) =>
+        __closure("epxhhokqfk", function () { return a; }, [a] );
       export function App() {
         const a = 1;
-        return bdkhmqcefk(a);
+        return epxhhokqfk(a);
       }
       __closure("App", App);`;
     assertTransform(code, expected);
@@ -195,7 +195,7 @@ describe('export declarations', () => {
 
   it('local function params', () => {
     const code = `
-      export function view() {
+      export function App() {
         const a = 1;
         return function(a) {
           return a;
@@ -204,14 +204,14 @@ describe('export declarations', () => {
     `;
 
     const expect = `
-      export const gkdfmnbhok = __closure("gkdfmnbhok", function (a) {
+      export const epxhhokqnn = __closure("epxhhokqnn", function (a) {
         return a;
       });
-      export function view() {
+      export function App() {
         const a = 1;
-        return gkdfmnbhok;
+        return epxhhokqnn;
       }
-      __closure("view", view);
+      __closure("App", App);
     `;
 
     assertTransform(code, expect);
@@ -219,15 +219,15 @@ describe('export declarations', () => {
 
   it('export property method', () => {
     const code = `
-      export const prop = {
+      export const App = {
         createELement() {}
       }
     `;
 
     const expect = `
-      export const vueysq2222 = __closure("vueysq2222", function () {});
-      export const prop = {
-        createELement: vueysq2222,
+      export const rqjtrrxxxx = __closure("rqjtrrxxxx", function () {});
+      export const App = {
+        createELement: rqjtrrxxxx,
       };
     `;
 
@@ -236,15 +236,15 @@ describe('export declarations', () => {
 
   it('export async property method', () => {
     const code = `
-      export const prop = {
+      export const App = {
         async createELement() {}
       }
     `;
 
     const expect = `
-      export const gfxfdw8888 = __closure("gfxfdw8888", async function () {});
-      export const prop = {
-        createELement: gfxfdw8888,
+      export const hgpnhxrrrr = __closure("hgpnhxrrrr", async function () {});
+      export const App = {
+        createELement: hgpnhxrrrr,
       };
     `;
 
@@ -253,7 +253,7 @@ describe('export declarations', () => {
 
   it('nested property method', () => {
     const code = `
-    export function render() {
+    export function App() {
       return compile().then(result => {
         return {
           dispose() {
@@ -262,28 +262,21 @@ describe('export declarations', () => {
         };
       })
     }
-    export function lazy() {
-      return "Hello lazy";
-    }
     `;
 
     const expected = `
-    export const qukeskahmn = __closure("qukeskahmn", function () {
-      // dispose
-    });
-      export const pqhvggfmcp = __closure("pqhvggfmcp", (result) => {
+      export const qqctercehn = __closure("qqctercehn", (result) => {
         return {
-          dispose: qukeskahmn,
+          dispose: vrfplfmcgt,
         };
       });
-      export function render() {
-        return compile().then(pqhvggfmcp);
+      export const vrfplfmcgt = __closure("vrfplfmcgt", function () {
+        // dispose
+      });
+      export function App() {
+        return compile().then(qqctercehn);
       }
-      __closure("render", render);
-      export function lazy() {
-        return "Hello lazy";
-      }
-      __closure("lazy", lazy);
+      __closure("App", App);
       `;
 
     assertTransform(code, expected);
@@ -291,7 +284,7 @@ describe('export declarations', () => {
 
   it('delay', () => {
     const code = `
-      export function delay(value, ts = 1000) {
+      export function App(value, ts = 1000) {
         return new Promise((resolve, reject) => {
           setTimeout(function () {
             resolve(value);
@@ -301,18 +294,18 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      export const rdnborkqtx = (resolve, value) =>
-        __closure("rdnborkqtx", function () {
+      export const ncldnbmoid = (resolve, value) =>
+        __closure("ncldnbmoid", function () {
           resolve(value);
         }, [resolve, value] );
-      export const kogcvckfyp = (value, ts) =>
-        __closure("kogcvckfyp", (resolve, reject) => {
-            setTimeout(rdnborkqtx(resolve, value), ts);
+      export const jmsilawerk = (value, ts) =>
+        __closure("jmsilawerk", (resolve, reject) => {
+            setTimeout(ncldnbmoid(resolve, value), ts);
           }, [value, ts] );
-      export function delay(value, ts = 1000) {
-        return new Promise(kogcvckfyp(value, ts));
+      export function App(value, ts = 1000) {
+        return new Promise(jmsilawerk(value, ts));
       }
-      __closure("delay", delay);
+      __closure("App", App);
     `;
 
     assertTransform(code, expected);
@@ -320,7 +313,7 @@ describe('export declarations', () => {
 
   it('local function reference', () => {
     const code = `
-      export function view(a) {
+      export function App(a) {
         function handler() {
           console.log(a);
         }
@@ -330,15 +323,15 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      export const handlgyxuw = (a) =>
-        __closure("handlgyxuw",function handler() {
+      export const handlfegqf = (a) =>
+        __closure("handlfegqf",function handler() {
             console.log(a);
           }, [a]
         );
-      export function view(a) {
-        return { a: handlgyxuw(a) };
+      export function App(a) {
+        return { a: handlfegqf(a) };
       }
-      __closure("view", view);
+      __closure("App", App);
     `;
 
     assertTransform(code, expected);

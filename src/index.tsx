@@ -1,10 +1,13 @@
-﻿import { State } from "@xania/state";
-import { hibernateJsx, jsx, render } from "@xania/view";
+﻿import { jsx, render } from "@xania/view";
 import App from "./App";
 
 render(<App />, document.getElementById("app"));
 
 // const str = hibernate(view(123));
+
+export function view() {
+  return <App />;
+}
 
 // resume(str).then((fn) => console.log(fn()));
 

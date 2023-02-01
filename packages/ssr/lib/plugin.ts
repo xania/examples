@@ -79,13 +79,35 @@ export function XaniaSsrPlugin(options: XaniaSsrOptions): Plugin {
     //   });
     //   vite.middlewares;
     // },
+    // async resolveId(source, importer, options) {
+    //   const match = source.match(/\:(.*)$/);
+    //   if (match) {
+    //     const resolved = await this.resolve(
+    //       source.slice(0, match.index),
+    //       importer,
+    //       options
+    //     );
+
+    //     if (resolved) {
+    //       return {
+    //         ...resolved,
+    //         id: resolved?.id + match[0],
+    //       };
+    //     }
+    //   }
+    // },
+    // async load(source, options) {
+    //   const match = source.match(/^\/\[([^\]]*)\]/);
+    //   if (match) {
+    //     const resolved = await this.resolve(source.slice(match[0].length), '');
+    //     console.log(resolved);
+    //     debugger;
+    //   }
+    // },
     transform(code, id, options) {
-      const match = id.match(/\.[tj]sx?$/);
+      const match = id.match(/\?resume\(([^\)]+)\)$/);
       if (match) {
-        if (id.endsWith('id.ts')) return;
-        // if (id.endsWith('factory.ts')) debugger;
-        // const names = match[1].split(',');
-        return transform(code, { entry: 'view' }); // , (x) => names.includes(x));
+        return transform(code, { entry: match[1].split(',') }); // , (x) => names.includes(x));
         // }
       }
       return undefined;

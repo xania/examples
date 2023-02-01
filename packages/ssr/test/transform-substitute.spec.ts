@@ -12,9 +12,9 @@ describe('substitute func reference', () => {
       }
       `;
     const expected = `
-      export const handlfchsw = __closure("handlfchsw", function handler() {});
+      export const handlfoakt = __closure("handlfoakt", function handler() {});
       export function App() {
-        return handlfchsw();
+        return handlfoakt();
       }
       __closure("App", App);
         `;
@@ -32,10 +32,9 @@ describe('substitute func reference', () => {
       }
       `;
     const expected = `
-      export const setCojbejr = __closure("setCojbejr", function setCompleted() {});
-      export const Compoadqoe = (setCompleted) =>
+      export const Compoadcmy = (setCompleted) =>
         __closure(
-          "Compoadqoe",
+          "Compoadcmy",
           function Component() {
             return {
               children: setCompleted,
@@ -43,8 +42,9 @@ describe('substitute func reference', () => {
           },
           [setCompleted]
         );
+      export const setCojnhmq = __closure("setCojnhmq", function setCompleted() {});
       export function App() {
-        return Compoadqoe(setCojbejr);
+        return Compoadcmy(setCojnhmq);
       }
       __closure("App", App);
     `;
