@@ -9,6 +9,8 @@ export function view() {
   return <App />;
 }
 
+console.log(App);
+
 // resume(str).then((fn) => console.log(fn()));
 
 // function hibernate(fn: Function) {

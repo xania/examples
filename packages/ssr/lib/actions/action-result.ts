@@ -28,8 +28,9 @@ export class ViewResult implements IActionResult {
         for (const item of curr) {
           stack.push(item);
         }
-      } else if (isSerializable(curr)) {
-        curr.serialize((s) => res.write(s));
+      } else if (curr instanceof Function) {
+      } else if (isHibernatable(curr)) {
+        await curr.hibernate((s) => res.write(s));
       } else if (curr) {
         res.write('unknown ' + curr.toString());
       }
@@ -38,12 +39,12 @@ export class ViewResult implements IActionResult {
   }
 }
 
-interface Serializable {
-  serialize(write: (s: string) => void): string;
+interface Hibernatable {
+  hibernate(write: (s: string) => void): string;
 }
 
-function isSerializable(obj: any): obj is Serializable {
-  return obj && obj.serialize instanceof Function;
+function isHibernatable(obj: any): obj is Hibernatable {
+  return obj && obj.hibernate instanceof Function;
 }
 
 export class Literal {

@@ -1,4 +1,6 @@
-﻿import type { Plugin } from 'vite';
+﻿import kleur from 'kleur';
+import type { Plugin } from 'vite';
+import { FileRouteResolver } from './router/file-route-resolver';
 import { transform } from './transform';
 
 export interface XaniaSsrOptions {
@@ -10,106 +12,90 @@ export interface XaniaSsrOptions {
 export function XaniaSsrPlugin(options: XaniaSsrOptions): Plugin {
   return {
     name: 'xania-ssr',
-    // configureServer(vite) {
-    //   const pagesPath = '/' + (options?.pagesPath ?? 'pages');
+    configureServer(vite) {
+      const pagesPath = '/' + (options?.pagesPath ?? 'pages');
 
-    //   console.log(
-    //     'SSR scripts will be resolved from: ' +
-    //       kleur.gray(vite.config.root) +
-    //       kleur.green(pagesPath)
-    //   );
+      const routeResoler = new FileRouteResolver(
+        options.exists,
+        vite.config.root,
+        pagesPath
+      );
+      routeResoler.sayHello();
 
-    //   const routeResoler = new FileRouteResolver(
-    //     options.exists,
-    //     vite.config.root,
-    //     pagesPath
-    //   );
+      vite.middlewares.use(async (req, res, next) => {
+        if (req.headers.accept?.includes('text/html')) {
+          const reqUrl = req.url || '';
+          const pageUrl = await routeResoler.resolvePage(reqUrl);
+          if (pageUrl) {
+            try {
+              const page = await vite.ssrLoadModule(pageUrl, {
+                fixStacktrace: true,
+              });
+              if (page?.view instanceof Function) {
+                let responseHtml = '';
+                const result = page.view();
+                await result.execute(
+                  req,
+                  {
+                    write(s: string) {
+                      responseHtml += s;
+                    },
+                    async end(data: any) {
+                      if (data) {
+                        responseHtml += data;
+                      }
+                      const transformedHtml = await vite.transformIndexHtml(
+                        pageUrl,
+                        responseHtml,
+                        req.originalUrl
+                      );
+                      res.end(transformedHtml);
+                    },
+                  } as any,
+                  next
+                );
+              } else {
+                console.warn(
+                  kleur.yellow(
+                    `page as '${pageUrl}' does not define view handler`
+                  )
+                );
+              }
+            } catch (err: any) {
+              console.log(kleur.red(err));
+            }
+          }
+        }
 
-    //   vite.middlewares.use(async (req, res, next) => {
-    //     if (req.headers.accept?.includes('text/html')) {
-    //       const reqUrl = req.url || '';
-    //       const pageUrl = await routeResoler.resolvePage(reqUrl);
-
-    //       if (pageUrl) {
-    //         // console.log(pageUrl);
-    //         try {
-    //           const page = await vite.ssrLoadModule(pageUrl, {
-    //             fixStacktrace: false,
-    //           });
-
-    //           if (page?.view instanceof Function) {
-    //             let responseHtml = '';
-    //             const result = page.view();
-
-    //             await result.execute(
-    //               req,
-    //               {
-    //                 write(s: string) {
-    //                   responseHtml += s;
-    //                 },
-    //                 async end(data: any) {
-    //                   if (data) {
-    //                     responseHtml += data;
-    //                   }
-
-    //                   const transformedHtml = await vite.transformIndexHtml(
-    //                     pageUrl,
-    //                     responseHtml,
-    //                     req.originalUrl
-    //                   );
-
-    //                   res.end(transformedHtml);
-    //                 },
-    //               } as any,
-    //               next
-    //             );
-    //           } else {
-    //             console.warn(
-    //               kleur.yellow(
-    //                 `page as '${pageUrl}' does not define view handler`
-    //               )
-    //             );
-    //           }
-    //         } catch (err: any) {
-    //           console.log(kleur.red(err));
-    //         }
-    //       }
-    //     }
-    //     return next();
-    //   });
-    //   vite.middlewares;
-    // },
-    // async resolveId(source, importer, options) {
-    //   const match = source.match(/\:(.*)$/);
-    //   if (match) {
-    //     const resolved = await this.resolve(
-    //       source.slice(0, match.index),
-    //       importer,
-    //       options
-    //     );
-
-    //     if (resolved) {
-    //       return {
-    //         ...resolved,
-    //         id: resolved?.id + match[0],
-    //       };
-    //     }
-    //   }
-    // },
-    // async load(source, options) {
-    //   const match = source.match(/^\/\[([^\]]*)\]/);
-    //   if (match) {
-    //     const resolved = await this.resolve(source.slice(match[0].length), '');
-    //     console.log(resolved);
-    //     debugger;
-    //   }
-    // },
-    transform(code, id, options) {
-      const match = id.match(/\?resume\(([^\)]+)\)$/);
-      if (match) {
-        return transform(code, { entry: match[1].split(',') }); // , (x) => names.includes(x));
-        // }
+        return next();
+      });
+    },
+    async resolveId(source, importer, options) {
+      if (options.ssr) {
+        const resolved = await this.resolve(source, importer, options);
       }
+      // const match = source.match(/\:(.*)$/);
+      // if (match) {
+      //   const resolved = await this.resolve(
+      //     source.slice(0, match.index),
+      //     importer,
+      //     options
+      //   );
+
+      //   if (resolved) {
+      //     return {
+      //       ...resolved,
+      //       id: resolved?.id + match[0],
+      //     };
+      //   }
+      // }
+    },
+
+    transform(code, id, options) {
+      if (id.match(/\.[tj]sx?$/)) {
+        return transform(code, {});
+      }
+
       return undefined;
     },
   } as Plugin;

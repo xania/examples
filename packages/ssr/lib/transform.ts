@@ -12,6 +12,7 @@ import {
   FunctionExpression,
   Identifier,
   ImportDeclaration,
+  ImportSpecifier,
   Pattern,
   Program,
   Property,
@@ -46,7 +47,7 @@ type TypedNode =
   | Program;
 
 export type TransfromOptions = {
-  entry: string[];
+  // entry: string[];
   includeHelper?: boolean;
 };
 
@@ -81,226 +82,192 @@ export function transform(
 
   const skipEnter = new Set();
 
-  const used: TypedNode[] = [];
-  const unprocess: TypedNode[] = [];
+  walk(ast, {
+    enter(n, p) {
+      const node = n as TypedNode;
+      const parent = (p || ast) as TypedNode;
+      let scope = scopes[scopes.length - 1]!;
 
-  for (const root of ast.body) {
-    switch (root.type) {
-      case 'ExportNamedDeclaration':
-        if (root.declaration) {
-          const { declaration } = root;
-          if (declaration.type === 'FunctionDeclaration') {
-            if (opts.entry.includes(declaration.id!.name)) {
-              used.push(root);
-            } else {
-              unprocess.push(root);
-            }
-          } else if (declaration.type === 'VariableDeclaration') {
-            const vars = variableFromPatterns(
-              declaration.declarations.map((d) => d.id)
-            );
-            if (vars.some((v) => opts.entry.includes(v))) {
-              used.push(root);
-            } else {
-              unprocess.push(root);
-            }
+      if (skipEnter.delete(node)) {
+        this.skip();
+      } else if (
+        node.type === 'FunctionDeclaration' ||
+        node.type === 'FunctionExpression' ||
+        node.type === 'ArrowFunctionExpression'
+      ) {
+        const funcScope = new Scope(scope);
+        for (const v of variableFromPatterns(node.params)) {
+          funcScope.declarations.set(v, node);
+        }
+        scopes.push(funcScope);
+
+        for (const p of node.params) skipEnter.add(p);
+        if (node.type === 'FunctionDeclaration' && node.id) {
+          skipEnter.add(node.id);
+          const funName = node.id?.name;
+
+          if (funName) {
+            scope.declarations.set(funName, node);
           }
         }
-        break;
-      case 'ExportDefaultDeclaration':
-        if (root.declaration) {
-          const { declaration } = root;
-          if (declaration.type === 'FunctionDeclaration') {
-            const name = declaration.id?.name ?? 'default';
-            if (opts.entry.includes(name)) {
-              used.push(root);
-            } else {
-              rootScope.unused.add(root);
-            }
+      } else if (node.type === 'MemberExpression') {
+        skipEnter.add(node.property);
+      } else if (node.type === 'ForStatement') {
+        this.skip();
+      } else if (node.type === 'Property') {
+        skipEnter.add(node.key);
+      } else if (node.type === 'VariableDeclaration') {
+        for (const declarator of node.declarations) {
+          skipEnter.add(declarator.id);
+          for (const v of variableFromPatterns([declarator.id])) {
+            scope.declarations.set(v, node);
           }
         }
-        break;
-      case 'FunctionDeclaration':
-        if (opts.entry.includes(root.id!.name)) {
-          used.push(root);
-        } else {
-          unprocess.push(root);
+      } else if (node.type === 'Identifier') {
+        scope.references.push(node);
+      } else if (
+        node.type === 'ClassDeclaration' ||
+        node.type === 'ClassExpression'
+      ) {
+        this.skip();
+      }
+      // else if (node.type === 'ImportDeclaration') {
+      //   if (
+      //     typeof node.source.value === 'string' &&
+      //     node.source.value.startsWith('./')
+      //   ) {
+      //     const m = node.source.value.match(/\.[^\/]+$/);
+      //     if (
+      //       !m ||
+      //       m[0] === '.js' ||
+      //       m[0] === '.ts' ||
+      //       m[0] === '.jsx' ||
+      //       m[0] === '.tsx'
+      //     )
+      //       magicString.appendLeft(node.source.end - 1, '?ssr');
+      //   }
+      // }
+    },
+    leave(n, p) {
+      const node = n as TypedNode;
+      const parent = (p || ast) as TypedNode;
+      let scope = scopes[scopes.length - 1]!;
+
+      const isRoot =
+        !parent ||
+        parent.type === 'ExportDefaultDeclaration' ||
+        parent.type === 'Program' ||
+        parent.type === 'ExportNamedDeclaration';
+
+      function popScope() {
+        const blockScope = scopes.pop()!;
+        const parentScope = scopes[scopes.length - 1]!;
+        for (const ref of blockScope.trappedReferences()) {
+          parentScope.references.push(ref);
         }
-        break;
-    }
-  }
-  for (const u of used) {
-    walk(u, {
-      enter(n, p) {
-        const node = n as TypedNode;
-        const parent = (p || ast) as TypedNode;
-        let scope = scopes[scopes.length - 1]!;
-
-        if (skipEnter.delete(node)) {
-          this.skip();
-        } else if (
-          node.type === 'FunctionDeclaration' ||
-          node.type === 'FunctionExpression' ||
-          node.type === 'ArrowFunctionExpression'
-        ) {
-          const funcScope = new Scope(scope);
-          for (const v of variableFromPatterns(node.params)) {
-            funcScope.declarations.set(v, node);
-          }
-          scopes.push(funcScope);
-
-          for (const p of node.params) skipEnter.add(p);
-          if (node.type === 'FunctionDeclaration' && node.id) {
-            skipEnter.add(node.id);
-            const funName = node.id?.name;
-
-            if (funName) {
-              scope.declarations.set(funName, node);
-            }
-          }
-        } else if (node.type === 'MemberExpression') {
-          skipEnter.add(node.property);
-        } else if (node.type === 'ForStatement') {
-          this.skip();
-        } else if (node.type === 'Property') {
-          skipEnter.add(node.key);
-        } else if (node.type === 'VariableDeclaration') {
-          for (const declarator of node.declarations) {
-            skipEnter.add(declarator.id);
-            for (const v of variableFromPatterns([declarator.id])) {
-              scope.declarations.set(v, node);
-            }
-          }
-        } else if (node.type === 'Identifier') {
-          scope.references.push(node);
-        } else if (
-          node.type === 'ClassDeclaration' ||
-          node.type === 'ClassExpression'
-        ) {
-          this.skip();
+        for (const cl of blockScope.closures) {
+          parentScope.closures.push(cl);
         }
-      },
-      leave(n, p) {
-        const node = n as TypedNode;
-        const parent = (p || ast) as TypedNode;
-        let scope = scopes[scopes.length - 1]!;
-
-        const isRoot =
-          !parent ||
-          parent.type === 'ExportDefaultDeclaration' ||
-          parent.type === 'Program' ||
-          parent.type === 'ExportNamedDeclaration';
-
-        function popScope() {
-          const blockScope = scopes.pop()!;
-          const parentScope = scopes[scopes.length - 1]!;
-          for (const ref of blockScope.trappedReferences()) {
-            parentScope.references.push(ref);
-          }
-          for (const cl of blockScope.closures) {
-            parentScope.closures.push(cl);
-          }
-          for (const u of blockScope.unused) {
-            parentScope.unused.add(u);
-          }
-          for (const [name, node] of blockScope.declarations) {
-            if (!blockScope.references.find((ref) => ref.name === name)) {
-              parentScope.unused.add(node);
-            }
+        for (const u of blockScope.unused) {
+          parentScope.unused.add(u);
+        }
+        for (const [name, node] of blockScope.declarations) {
+          if (!blockScope.references.find((ref) => ref.name === name)) {
+            parentScope.unused.add(node);
           }
         }
+      }
 
-        if (node.type === 'Identifier') {
-          const idName = node.name;
-          const replacement = scope.substitute(idName, false);
-          if (replacement) {
-            magicString.remove(node.start, node.end);
-            magicString.appendLeft(node.start, replacement);
-          }
-        } else if (node.type === 'FunctionDeclaration') {
-          if (isRoot) {
-            if (parent.type === 'ExportDefaultDeclaration') {
-              const id = node.id?.name ?? __id(code, parent);
-              scope.closures.push({
-                isRoot,
-                parent,
-                node,
-                id,
-              });
-            } else {
-              const id = node.id!.name;
-              scope.closures.push({
-                isRoot,
-                parent,
-                node,
-                id,
-              });
-            }
+      if (node.type === 'Identifier') {
+        const idName = node.name;
+        const replacement = scope.substitute(idName, false);
+        if (replacement) {
+          magicString.remove(node.start, node.end);
+          magicString.appendLeft(node.start, replacement);
+        }
+      } else if (node.type === 'FunctionDeclaration') {
+        if (isRoot) {
+          if (parent.type === 'ExportDefaultDeclaration') {
+            const id = node.id?.name ?? __id(code, parent);
+            scope.closures.push({
+              isRoot,
+              parent,
+              node,
+              id,
+            });
           } else {
-            const args: string[] = uniqueParams(scope.trappedReferences());
-            //   const args = funcScope.getTrapped(references);
-            const id = exportFunction(scope, parent, node, args);
-            if (args.length > 0) {
-              scope.parent?.aliases.set(node.id!.name, { id, args });
-            } else {
-              scope.parent?.aliases.set(node.id!.name, { id });
-            }
+            const id = node.id!.name;
+            scope.closures.push({
+              isRoot,
+              parent,
+              node,
+              id,
+            });
           }
-          popScope();
-        } else if (
-          node.type === 'FunctionExpression' ||
-          node.type === 'ArrowFunctionExpression'
-        ) {
-          if (
-            parent.type === 'Property' &&
-            parent.method &&
-            parent.kind === 'init'
-          ) {
-            if (node.async) {
-              magicString.remove(parent.start, parent.key.start);
-              magicString.prependRight(node.start, 'async function ');
-            } else magicString.prependRight(node.start, 'function ');
-
-            const trappedReferences = scope.trappedReferences();
-            const params: string[] = uniqueParams(trappedReferences);
-            const args: string[] = unique(
-              trappedReferences.map((x) => scope.substitute(x.name) ?? x.name)
-            );
-            // const args = funcScope.getTrapped(references);
-            const id = exportFunction(scope, parent, node, params);
-            // const [id, args] = exportFunction(node, funcScope);
-            magicString.appendLeft(node.start, ':' + id);
-            if (args.length > 0) {
-              magicString.appendLeft(node.start, `(${args.join(',')})`);
-            }
-          } else if (!isRoot) {
-            //   //       const funcNode = node as any as acorn.Node;
-            const trappedReferences = scope.trappedReferences();
-            const params: string[] = uniqueParams(trappedReferences);
-            const args: string[] = unique(
-              trappedReferences.map((x) => scope.substitute(x.name) ?? x.name)
-            );
-            const id = __id(code, node);
-            if (id === 'narvlemiuw') debugger;
-            // subsctitute expression reference
-            magicString.appendLeft(node.start, `${id}`);
-
-            magicString.appendRight(node.start, `export const ${id} = `);
-            if (params.length > 0) {
-              magicString.appendLeft(node.start, `(${args.join(',')})`);
-              magicString.appendRight(node.start, `(${params.join(',')}) => `);
-              magicString.appendLeft(node.end, `, [${params.join(',')}]`);
-            }
-            // export definition
-            magicString.appendRight(node.start, `__closure("${id}", `);
-            magicString.appendLeft(node.end, `);`);
-            magicString.move(node.start, node.end, exportIndex);
+        } else {
+          const args: string[] = uniqueParams(scope.trappedReferences());
+          //   const args = funcScope.getTrapped(references);
+          const id = exportFunction(scope, parent, node, args);
+          if (args.length > 0) {
+            scope.parent?.aliases.set(node.id!.name, { id, args });
+          } else {
+            scope.parent?.aliases.set(node.id!.name, { id });
           }
-          popScope();
         }
-      },
-    });
-  }
+        popScope();
+      } else if (
+        node.type === 'FunctionExpression' ||
+        node.type === 'ArrowFunctionExpression'
+      ) {
+        if (
+          parent.type === 'Property' &&
+          parent.method &&
+          parent.kind === 'init'
+        ) {
+          if (node.async) {
+            magicString.remove(parent.start, parent.key.start);
+            magicString.prependRight(node.start, 'async function ');
+          } else magicString.prependRight(node.start, 'function ');
+
+          const trappedReferences = scope.trappedReferences();
+          const params: string[] = uniqueParams(trappedReferences);
+          const args: string[] = unique(
+            trappedReferences.map((x) => scope.substitute(x.name) ?? x.name)
+          );
+          // const args = funcScope.getTrapped(references);
+          const id = exportFunction(scope, parent, node, params);
+          // const [id, args] = exportFunction(node, funcScope);
+          magicString.appendLeft(node.start, ':' + id);
+          if (args.length > 0) {
+            magicString.appendLeft(node.start, `(${args.join(',')})`);
+          }
+        } else if (!isRoot) {
+          //   //       const funcNode = node as any as acorn.Node;
+          const trappedReferences = scope.trappedReferences();
+          const params: string[] = uniqueParams(trappedReferences);
+          const args: string[] = unique(
+            trappedReferences.map((x) => scope.substitute(x.name) ?? x.name)
+          );
+          const id = __id(code, node);
+          if (id === 'narvlemiuw') debugger;
+          // subsctitute expression reference
+          magicString.appendLeft(node.start, `${id}`);
+
+          magicString.appendRight(node.start, `export const ${id} = `);
+          if (params.length > 0) {
+            magicString.appendLeft(node.start, `(${args.join(',')})`);
+            magicString.appendRight(node.start, `(${params.join(',')}) => `);
+            magicString.appendLeft(node.end, `, [${params.join(',')}]`);
+          }
+          // export definition
+          magicString.appendRight(node.start, `__closure("${id}", `);
+          magicString.appendLeft(node.end, `);`);
+          magicString.move(node.start, node.end, exportIndex);
+        }
+        popScope();
+      }
+    },
+  });
 
   for (const closure of rootScope.closures) {
     const { isRoot, parent, id, args, node } = closure;

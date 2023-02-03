@@ -1,7 +1,7 @@
 ﻿import { defineConfig } from "vite";
 import path from "node:path";
 import { fileURLToPath } from "url";
-import { XaniaSsrPlugin } from "@xania/ssr";
+import { XaniaSsrPlugin } from "./packages/ssr/lib/plugin";
 import fs from "fs/promises";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));

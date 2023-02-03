@@ -7,9 +7,9 @@ export const view: IActionHandler = () => {
   return new ViewResult(
     (
       <Layout>
-        asdf as dfasd
-        <script type="module" src="/pages/todomvc" />
-        <TodoApp />
+        <div class="App">
+          <TodoApp />
+        </div>
       </Layout>
     )
   );

@@ -1,4 +1,5 @@
-﻿import { XaniaSsrOptions } from '../plugin';
+﻿import kleur from 'kleur';
+import { XaniaSsrOptions } from '../plugin';
 import { RouteResolver } from './route-resolver';
 // import kleur from 'kleur';
 export class FileRouteResolver implements RouteResolver {
@@ -20,5 +21,13 @@ export class FileRouteResolver implements RouteResolver {
       return this.root + scriptPath;
     }
     return null;
+  }
+
+  sayHello() {
+    console.log(
+      'SSR scripts will be resolved from: ' +
+        kleur.gray(this.root) +
+        kleur.green(this.pagesPath)
+    );
   }
 }
