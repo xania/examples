@@ -4,10 +4,13 @@ import { Layout } from "./Layout";
 
 export default function () {
   return (
-    <Layout>
-      <div class="App">
-        <TodoApp />
-      </div>
-    </Layout>
+    <>
+      {"<!doctype html>"}
+      <Layout>
+        <div class="App">
+          <TodoApp />
+        </div>
+      </Layout>
+    </>
   );
 }

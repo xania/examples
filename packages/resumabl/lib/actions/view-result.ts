@@ -17,14 +17,14 @@ export class ViewResult implements IActionResult {
       if (curr instanceof Promise) {
         stack.push(await curr);
       } else if (curr instanceof Array) {
-        for (const item of curr) {
-          stack.push(item);
+        for (let i = curr.length - 1; i >= 0; i--) {
+          stack.push(curr[i]);
         }
       } else if (curr instanceof Function) {
       } else if (isResumable(curr)) {
         await curr.hibernate((s) => res.write(s));
       } else if (curr) {
-        res.write('unknown ' + curr.toString());
+        res.write(curr.toString());
       }
     }
     res.end();

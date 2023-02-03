@@ -18,7 +18,7 @@ export function resumabl(xn?: Options): Plugin {
     configureServer(vite) {
       function createDefaultPageResolver() {
         console.log(
-          'SSR scripts will be resolved from: ' +
+          'Resumable scripts will be resolved from: ' +
             kleur.gray(vite.config.root) +
             kleur.green('/pages')
         );
@@ -39,7 +39,7 @@ export function resumabl(xn?: Options): Plugin {
               const handler = page.default ?? page?.view;
 
               if (handler instanceof Function) {
-                let responseHtml = '<!doctype html>';
+                let responseHtml = '';
                 await new ViewResult(await handler()).execute(
                   req,
                   {
