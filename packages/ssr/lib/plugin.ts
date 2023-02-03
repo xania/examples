@@ -9,14 +9,14 @@ export interface XaniaSsrOptions {
   exists(file: string): Promise<boolean>;
 }
 
-export function XaniaSsrPlugin(options: XaniaSsrOptions): Plugin {
+export function XaniaSsrPlugin(xn: XaniaSsrOptions): Plugin {
   return {
     name: 'xania-ssr',
     configureServer(vite) {
-      const pagesPath = '/' + (options?.pagesPath ?? 'pages');
+      const pagesPath = '/' + (xn?.pagesPath ?? 'pages');
 
       const routeResoler = new FileRouteResolver(
-        options.exists,
+        xn.exists,
         vite.config.root,
         pagesPath
       );
@@ -32,7 +32,7 @@ export function XaniaSsrPlugin(options: XaniaSsrOptions): Plugin {
                 fixStacktrace: true,
               });
               if (page?.view instanceof Function) {
-                let responseHtml = '';
+                let responseHtml = '<!doctype html>';
                 const result = page.view();
                 await result.execute(
                   req,

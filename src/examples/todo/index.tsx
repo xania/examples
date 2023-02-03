@@ -39,8 +39,7 @@ export function TodoApp() {
             <h1>todos</h1>
             <NewTodo onNew={(item) => items.append([item])} />
           </header>
-          {/* <TodoList />
-           */}
+          <TodoList />
           <If condition={items.map((l) => l.length > 0)}>
             <TodoFooter items={items} />
           </If>

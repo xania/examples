@@ -12,7 +12,6 @@ import {
   FunctionExpression,
   Identifier,
   ImportDeclaration,
-  ImportSpecifier,
   Pattern,
   Program,
   Property,
@@ -131,22 +130,6 @@ export function transform(
       ) {
         this.skip();
       }
-      // else if (node.type === 'ImportDeclaration') {
-      //   if (
-      //     typeof node.source.value === 'string' &&
-      //     node.source.value.startsWith('./')
-      //   ) {
-      //     const m = node.source.value.match(/\.[^\/]+$/);
-      //     if (
-      //       !m ||
-      //       m[0] === '.js' ||
-      //       m[0] === '.ts' ||
-      //       m[0] === '.jsx' ||
-      //       m[0] === '.tsx'
-      //     )
-      //       magicString.appendLeft(node.source.end - 1, '?ssr');
-      //   }
-      // }
     },
     leave(n, p) {
       const node = n as TypedNode;
