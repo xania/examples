@@ -1,0 +1,52 @@
+{
+  "name": "vite-plugin-resumabl",
+  "version": "0.1.2",
+  "license": "MIT",
+  "main": "./dist/main.cjs",
+  "module": "./dist/main.js",
+  "typings": "./index.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/main.js",
+      "require": "./dist/main.cjs"
+    }
+  },
+  "private": false,
+  "files": [
+    "dist",
+    "lib"
+  ],
+  "engines": {
+    "node": ">=10"
+  },
+  "scripts": {
+    "dev": "npx vite --watch build",
+    "build": "npx vite build",
+    "clean": "npx rimraf dist",
+    "prepublishOnly": "npm run clean && npm version patch && npm run build"
+  },
+  "prettier": {
+    "printWidth": 80,
+    "semi": true,
+    "singleQuote": true,
+    "trailingComma": "es5",
+    "tabWidth": 2
+  },
+  "author": "Ibrahim ben Salah",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xania/ssr.git"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "kleur": "^4.1.5"
+  },
+  "peepDependencies": {
+    "tslib": "^2.4.1",
+    "typescript": "^4.9.4"
+  },
+  "dependencies": {
+    "resumbl": "0.1.1"
+  }
+}

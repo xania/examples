@@ -1,8 +1,7 @@
 ﻿import { defineConfig } from "vite";
 import path from "node:path";
 import { fileURLToPath } from "url";
-import { XaniaSsrPlugin } from "./packages/ssr/lib/plugin";
-import fs from "fs/promises";
+import { resumabl } from "./packages/vite-plugin-resumabl/lib/plugin";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
@@ -20,19 +19,5 @@ export default defineConfig({
     port: 3000,
     host: "0.0.0.0"
   },
-  plugins: [
-    XaniaSsrPlugin({
-      routes: {
-        // "/pages/todomvc.tsx": () => import("./pages/todomvc")
-      },
-      async exists(file) {
-        try {
-          const stats = await fs.stat(file, {});
-          return stats.isFile();
-        } catch (err) {
-          return false;
-        }
-      }
-    })
-  ]
+  plugins: [resumabl()]
 });

@@ -1,40 +1,46 @@
-﻿import kleur from 'kleur';
-import type { Plugin } from 'vite';
-import { FileRouteResolver } from './router/file-route-resolver';
-import { transform } from './transform';
+﻿import type { Plugin } from 'vite';
+import kleur from 'kleur';
+import { FileRouteResolver } from '../../resumabl/lib/router/file-route-resolver';
+import { transform } from '../../resumabl/lib/transform';
+import { ViewResult } from '../../resumabl/lib/actions/view-result';
 
-export interface XaniaSsrOptions {
-  pagesPath?: string;
-  routes: Record<string, () => Promise<any>>;
-  exists(file: string): Promise<boolean>;
+export interface Options {
+  resolvePage?(url: string): Promise<string>;
 }
 
-export function XaniaSsrPlugin(xn: XaniaSsrOptions): Plugin {
-  return {
-    name: 'xania-ssr',
-    configureServer(vite) {
-      const pagesPath = '/' + (xn?.pagesPath ?? 'pages');
+export function createPageResolver(baseDir: string) {
+  new FileRouteResolver(baseDir).resolvePage;
+}
 
-      const routeResoler = new FileRouteResolver(
-        xn.exists,
-        vite.config.root,
-        pagesPath
-      );
-      routeResoler.sayHello();
+export function resumabl(xn?: Options): Plugin {
+  return {
+    name: 'vite-plugin-resumabl',
+    configureServer(vite) {
+      function createDefaultPageResolver() {
+        console.log(
+          'SSR scripts will be resolved from: ' +
+            kleur.gray(vite.config.root) +
+            kleur.green('/pages')
+        );
+        return new FileRouteResolver(vite.config.root + '/pages').resolvePage;
+      }
+      const resolvePage = xn?.resolvePage ?? createDefaultPageResolver();
 
       vite.middlewares.use(async (req, res, next) => {
         if (req.headers.accept?.includes('text/html')) {
           const reqUrl = req.url || '';
-          const pageUrl = await routeResoler.resolvePage(reqUrl);
+          const pageUrl = await resolvePage(reqUrl);
           if (pageUrl) {
             try {
               const page = await vite.ssrLoadModule(pageUrl, {
                 fixStacktrace: true,
               });
-              if (page?.view instanceof Function) {
+
+              const handler = page.default ?? page?.view;
+
+              if (handler instanceof Function) {
                 let responseHtml = '<!doctype html>';
-                const result = page.view();
-                await result.execute(
+                await new ViewResult(await handler()).execute(
                   req,
                   {
                     write(s: string) {

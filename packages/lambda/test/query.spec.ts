@@ -1,6 +1,5 @@
 ﻿'strict';
 
-import { never } from 'rxjs';
 import { expect, test } from 'vitest';
 import { Q } from '../lib/index';
 
