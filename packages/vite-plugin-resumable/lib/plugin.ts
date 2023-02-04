@@ -1,8 +1,6 @@
 ﻿import type { Plugin } from 'vite';
 import kleur from 'kleur';
-import { FileRouteResolver } from '../../resumabl/lib/router/file-route-resolver';
-import { transform } from '../../resumabl/lib/transform';
-import { ViewResult } from '../../resumabl/lib/actions/view-result';
+import { FileRouteResolver, transform, ViewResult } from '../../resumable';
 
 export interface Options {
   resolvePage?(url: string): Promise<string>;
@@ -14,7 +12,7 @@ export function createPageResolver(baseDir: string) {
 
 export function resumabl(xn?: Options): Plugin {
   return {
-    name: 'vite-plugin-resumabl',
+    name: 'vite-plugin-resumable',
     configureServer(vite) {
       function createDefaultPageResolver() {
         console.log(

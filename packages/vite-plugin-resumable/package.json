@@ -1,6 +1,6 @@
 {
-  "name": "vite-plugin-resumabl",
-  "version": "0.1.2",
+  "name": "vite-plugin-resumable",
+  "version": "0.1.4",
   "license": "MIT",
   "main": "./dist/main.cjs",
   "module": "./dist/main.js",
