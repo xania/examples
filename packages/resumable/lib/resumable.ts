@@ -1,5 +1,9 @@
 ﻿export interface Resumable {
-  hibernate(write: (s: string) => void): string;
+  hibernate(res: ResponseWriter): string;
+}
+
+interface ResponseWriter {
+  write(str: string): void;
 }
 
 export function isResumable(obj: any): obj is Resumable {

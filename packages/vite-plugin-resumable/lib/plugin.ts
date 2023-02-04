@@ -1,6 +1,6 @@
 ﻿import type { Plugin } from 'vite';
 import kleur from 'kleur';
-import { FileRouteResolver, transform, ViewResult } from '../../resumable';
+import { FileRouteResolver, transform, ViewResult } from '../../resumable/';
 
 export interface Options {
   resolvePage?(url: string): Promise<string>;
@@ -10,7 +10,7 @@ export function createPageResolver(baseDir: string) {
   new FileRouteResolver(baseDir).resolvePage;
 }
 
-export function resumabl(xn?: Options): Plugin {
+export function resumable(xn?: Options): Plugin {
   return {
     name: 'vite-plugin-resumable',
     configureServer(vite) {
@@ -20,7 +20,11 @@ export function resumabl(xn?: Options): Plugin {
             kleur.gray(vite.config.root) +
             kleur.green('/pages')
         );
-        return new FileRouteResolver(vite.config.root + '/pages').resolvePage;
+        const resolver = new FileRouteResolver(vite.config.root + '/pages');
+
+        return (url: string) => {
+          return resolver.resolvePage(url);
+        };
       }
       const resolvePage = xn?.resolvePage ?? createDefaultPageResolver();
 
@@ -31,7 +35,7 @@ export function resumabl(xn?: Options): Plugin {
           if (pageUrl) {
             try {
               const page = await vite.ssrLoadModule(pageUrl, {
-                fixStacktrace: true,
+                fixStacktrace: false,
               });
 
               const handler = page.default ?? page?.view;
@@ -74,29 +78,32 @@ export function resumabl(xn?: Options): Plugin {
         return next();
       });
     },
-    async resolveId(source, importer, options) {
-      if (options.ssr) {
-        const resolved = await this.resolve(source, importer, options);
-      }
-      // const match = source.match(/\:(.*)$/);
-      // if (match) {
-      //   const resolved = await this.resolve(
-      //     source.slice(0, match.index),
-      //     importer,
-      //     options
-      //   );
+    // async resolveId(source, importer, options) {
+    //   if (options.ssr) {
+    //     const resolved = await this.resolve(source, importer, options);
+    //   }
+    //   // const match = source.match(/\:(.*)$/);
+    //   // if (match) {
+    //   //   const resolved = await this.resolve(
+    //   //     source.slice(0, match.index),
+    //   //     importer,
+    //   //     options
+    //   //   );
 
-      //   if (resolved) {
-      //     return {
-      //       ...resolved,
-      //       id: resolved?.id + match[0],
-      //     };
-      //   }
-      // }
-    },
+    //   //   if (resolved) {
+    //   //     return {
+    //   //       ...resolved,
+    //   //       id: resolved?.id + match[0],
+    //   //     };
+    //   //   }
+    //   // }
+    // },
 
     transform(code, id, options) {
-      if (id.match(/\.[tj]sx?$/)) {
+      if (id.endsWith('hibernate.ts')) {
+        console.log(id);
+      }
+      if (id.match(/\.tsx$/)) {
         return transform(code, {});
       }
 

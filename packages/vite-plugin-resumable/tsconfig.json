@@ -13,6 +13,9 @@
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node",
     "target": "ESNext",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "paths": {
+      "@xania/resumable": ["../resumable/index.ts"]
+    }
   }
 }

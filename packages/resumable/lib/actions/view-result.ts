@@ -22,7 +22,7 @@ export class ViewResult implements IActionResult {
         }
       } else if (curr instanceof Function) {
       } else if (isResumable(curr)) {
-        await curr.hibernate((s) => res.write(s));
+        await curr.hibernate(res);
       } else if (curr) {
         res.write(curr.toString());
       }

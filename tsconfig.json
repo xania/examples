@@ -12,7 +12,8 @@
     "module": "ESNext",
     "paths": {
       "@xania/view": ["./packages/view/lib/index.ts"],
-      "@xania/state": ["./packages/state/lib/index.ts"]
+      "@xania/state": ["./packages/state/lib/index.ts"],
+      "@xania/resumable": ["./packages/resumable/index.ts"]
     },
     "allowSyntheticDefaultImports": true
   }
