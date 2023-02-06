@@ -98,11 +98,17 @@ describe('export declarations', () => {
       export function App() {
         async function Component() {
         }
+
+        return Component;
       }
     `;
     const expected = `
-      export const Compoqfmby = __closure("Compoqfmby", async function Component() {});
+      export const Compoqfmby = __closure(
+        "Compoqfmby",
+        async function Component() {}
+      );
       export function App() {
+        return Compoqfmby;
       }
       __closure("App", App);
     `;
@@ -138,18 +144,20 @@ describe('export declarations', () => {
   it('local function with trapped params', () => {
     const code = `
       export function App(a = 1) {
-        function Component() {
+        return function Component() {
           return a;
         }
       }
     `;
     const expected = `
-      export const Compowyekn = (a) =>
-        __closure("Compowyekn", function Component() {
+      export const Composecnx = (a) =>
+        __closure("Composecnx", function Component() {
             return a;
           }, [a]
         );
-      export function App(a = 1) {}
+      export function App(a = 1) {
+        return Composecnx(a);
+      }
       __closure("App", App);
     `;
     assertTransform(code, expected);
@@ -158,16 +166,18 @@ describe('export declarations', () => {
   it('local function with unresolved variables', () => {
     const code = `
       export function App() {
-        function Component() {
+        return function Component() {
           return a;
         }
       }
     `;
     const expected = `
-      export const Compoqechi = __closure("Compoqechi", function Component() {
+      export const Compoqdcjl = __closure("Compoqdcjl", function Component() {
         return a;
       });
-      export function App() {}
+      export function App() {
+        return Compoqdcjl;
+      }
       __closure("App", App);
       `;
     assertTransform(code, expected);
@@ -294,14 +304,14 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      export const ncldnbmoid = (resolve, value) =>
-        __closure("ncldnbmoid", function () {
-          resolve(value);
-        }, [resolve, value] );
       export const jmsilawerk = (value, ts) =>
         __closure("jmsilawerk", (resolve, reject) => {
             setTimeout(ncldnbmoid(resolve, value), ts);
           }, [value, ts] );
+      export const ncldnbmoid = (resolve, value) =>
+        __closure("ncldnbmoid", function () {
+          resolve(value);
+        }, [resolve, value] );
       export function App(value, ts = 1000) {
         return new Promise(jmsilawerk(value, ts));
       }
@@ -334,6 +344,23 @@ describe('export declarations', () => {
       __closure("App", App);
     `;
 
+    assertTransform(code, expected);
+  });
+
+  it('export default function declaration', () => {
+    const code = `
+      export default function App() {
+        return function Component() {}
+      }
+    `;
+
+    const expected = `
+      const App = __closure("App", function App() {
+        return Compocmmmq;
+      });
+      export const Compocmmmq = __closure("Compocmmmq", function Component() {});
+      export default App;
+    `;
     assertTransform(code, expected);
   });
 });

@@ -16,7 +16,7 @@ body {
   display: flex;
   flex-direction: column;
 
-  background-color: white;
+  background-color: rgb(228, 243, 197);
 }
 
 nav {

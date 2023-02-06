@@ -4,7 +4,6 @@ import prettier from 'prettier';
 
 export function assertTransform(code: string, expectedOutput) {
   let transformedCode = transform(code, {
-    entry: ['App', 'default'],
     includeHelper: false,
   })!.code;
 

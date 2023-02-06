@@ -8,7 +8,7 @@ describe('substitute func reference', () => {
     const code = `
       export function App() {
         function handler() {}
-          return handler();
+        return handler();
       }
       `;
     const expected = `
@@ -20,7 +20,8 @@ describe('substitute func reference', () => {
         `;
     assertTransform(code, expected);
   });
-  it('from inherited scope', () => {
+
+  it('from property to parent scope', () => {
     const code = `
       export function App() {
         function setCompleted() {}
@@ -32,19 +33,63 @@ describe('substitute func reference', () => {
       }
       `;
     const expected = `
-      export const Compoadcmy = (setCompleted) =>
-        __closure(
+      export const setCojnhmq = __closure("setCojnhmq", function setCompleted() {});
+      export const Compoadcmy = __closure(
           "Compoadcmy",
           function Component() {
             return {
-              children: setCompleted,
+              children: setCojnhmq,
             };
-          },
-          [setCompleted]
+          }
         );
+      export function App() {
+        return Compoadcmy;
+      }
+      __closure("App", App);
+    `;
+    assertTransform(code, expected);
+  });
+
+  it('from for statement', () => {
+    const code = `
+      export function App() {
+        function setCompleted() {}
+        for(let i=0 ; i<100 ; i++) {
+          return setCompleted();
+        }
+      }
+      `;
+    const expected = `
       export const setCojnhmq = __closure("setCojnhmq", function setCompleted() {});
       export function App() {
-        return Compoadcmy(setCojnhmq);
+        for (let i = 0; i < 100; i++) {
+          return setCojnhmq();
+        }
+      }
+      __closure("App", App);
+      `;
+    assertTransform(code, expected);
+  });
+
+  it('from class member to parent scope', () => {
+    const code = `
+      export function App() {
+        function setCompleted() {}
+        return class Component {
+          setCompleted = setCompleted
+        }
+      }
+      `;
+    const expected = `
+      export const setCojnhmq = __closure("setCojnhmq", function setCompleted() {});
+      export const Compocivck = __closure(
+        "Compocivck",
+        class Component {
+          setCompleted = setCojnhmq;
+        }
+      );
+      export function App() {
+        return Compocivck;
       }
       __closure("App", App);
     `;

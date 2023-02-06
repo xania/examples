@@ -100,11 +100,13 @@ export function resumable(xn?: Options): Plugin {
     // },
 
     transform(code, id, options) {
-      if (id.endsWith('hibernate.ts')) {
-        console.log(id);
-      }
-      if (id.match(/\.tsx$/)) {
-        return transform(code, {});
+      if (id.match(/\.tsx?$/)) {
+        try {
+          const result = transform(code, {});
+          return result;
+        } catch {
+          debugger;
+        }
       }
 
       return undefined;
