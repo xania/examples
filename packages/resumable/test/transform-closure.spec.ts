@@ -363,4 +363,27 @@ describe('export declarations', () => {
     `;
     assertTransform(code, expected);
   });
+
+  it('closure over root variable declaration', () => {
+    const code = `
+      const jsx = null;
+      export default function App() {
+        return function Component() {
+          return jsx;
+        }
+      }
+    `;
+
+    const expected = `
+      const App = __closure("App", function App() {
+        return Comporrudo;
+      });
+      export const Comporrudo = __closure("Comporrudo", function Component() {
+        return jsx;
+      });
+      const jsx = null;
+      export default App;
+    `;
+    assertTransform(code, expected);
+  });
 });

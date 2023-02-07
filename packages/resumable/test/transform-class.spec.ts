@@ -129,11 +129,13 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const kodrqgryhc = __closure("kodrqgryhc", function () {
-        return this;
-      });
+      export const kodrqgryhc = (this_36) =>
+        __closure( "kodrqgryhc", function () {
+            return this_36;
+          }, [this_36]
+        );
       export class State {
-        method = kodrqgryhc;
+        method = kodrqgryhc(this);
       }
       __closure("State", State);
     `;
@@ -222,6 +224,19 @@ describe('transform classes', () => {
       }
     `;
 
-    assertTransform(code, code);
+    const expected = `
+      export const bldklkwcqp = (this_36) =>
+        __closure("bldklkwcqp", () => { return this_36; },
+          [this_36]
+        );
+      export class State {
+        constructor() {
+          this.arrow = bldklkwcqp(this);
+        }
+      }
+      __closure("State", State);    
+    `;
+
+    assertTransform(code, expected);
   });
 });

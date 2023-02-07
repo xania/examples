@@ -102,8 +102,7 @@ export function resumable(xn?: Options): Plugin {
     transform(code, id, options) {
       if (id.match(/\.tsx?$/)) {
         try {
-          const result = transform(code, {});
-          return result;
+          return transform(code, {});
         } catch {
           debugger;
         }

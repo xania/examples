@@ -136,10 +136,9 @@ export function transform(
 
         if (node.kind === 'constructor') skipEnter.set(node.value, 'shallow');
 
-        // const memberScope = new Scope(scope);
-        // if (node.type !== 'MethodDefinition' || node.kind !== 'constructor')
-        //   memberScope.aliases.set('this', { content: 'this_' + node.start });
-        // scopes.push(memberScope);
+        const memberScope = new Scope(node, scope);
+        memberScope.aliases.set('this', { content: 'this_' + node.start });
+        scopes.push(memberScope);
       } else if (
         node.type === 'FunctionDeclaration' ||
         node.type === 'FunctionExpression' ||
@@ -409,6 +408,19 @@ class Scope {
     return result;
   }
 
+  resolve(variable: string) {
+    let scope: Scope | undefined = this;
+    while (scope) {
+      if (scope.declarations.has(variable)) return scope;
+      scope = scope.parent;
+    }
+    return null;
+  }
+
+  get isRoot() {
+    return !this.parent;
+  }
+
   paramsAndArgs() {
     const scope = this;
     const trappedReferences = scope.trappedReferences();
@@ -419,12 +431,11 @@ class Scope {
       // const refName = magicString.slice(ref.start, ref.end);
       if (ref.type === 'Identifier') {
         const refName = ref.name;
-        const replacement = scope.substitute(refName);
-        if (replacement) {
-          args.add(replacement.content);
-        } else args.add(refName);
-
-        params.add(refName);
+        const refScope = scope.resolve(refName);
+        if (!refScope || !refScope.isRoot) {
+          args.add(refName);
+          params.add(refName);
+        }
       } else {
         const replacement = scope.substitute('this');
         if (replacement) {
