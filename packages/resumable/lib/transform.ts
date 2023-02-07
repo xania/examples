@@ -70,7 +70,7 @@ export function transform(
     ecmaVersion: 'latest',
   }) as Program;
 
-  const rootScope = new Scope(ast);
+  const rootScope = new Scope(ast, false);
   const scopes = [rootScope];
 
   const magicString = new MagicString(code);
@@ -118,7 +118,7 @@ export function transform(
         node.type === 'ClassDeclaration' ||
         node.type === 'ClassExpression'
       ) {
-        const classScope = new Scope(node, scope);
+        const classScope = new Scope(node, true, scope);
         scopes.push(classScope);
 
         if (node.id) {
@@ -128,32 +128,31 @@ export function transform(
       } else if (node.type === 'PropertyDefinition') {
         skipEnter.set(node.key, 'deep');
 
-        const memberScope = new Scope(node, scope);
-        memberScope.aliases.set('this', { content: 'this_' + node.start });
+        const memberScope = new Scope(node, true, scope);
         scopes.push(memberScope);
       } else if (node.type === 'MethodDefinition') {
         skipEnter.set(node.key, 'deep');
 
         if (node.kind === 'constructor') skipEnter.set(node.value, 'shallow');
 
-        const memberScope = new Scope(node, scope);
-        memberScope.aliases.set('this', { content: 'this_' + node.start });
+        const memberScope = new Scope(node, true, scope);
         scopes.push(memberScope);
       } else if (
         node.type === 'FunctionDeclaration' ||
         node.type === 'FunctionExpression' ||
         node.type === 'ArrowFunctionExpression'
       ) {
-        const funcScope = new Scope(node, scope);
+        const funcScope = new Scope(
+          node,
+          node.type !== 'ArrowFunctionExpression',
+          scope
+        );
         for (const [v, n] of variableFromPatterns(node.params)) {
           funcScope.declarations.set(v, n);
         }
         scopes.push(funcScope);
 
         for (const p of node.params) skipEnter.set(p, 'deep');
-        if (node.type === 'FunctionDeclaration') {
-          funcScope.aliases.set('this', { content: 'this_' + node.start });
-        }
         if (
           node.type === 'FunctionDeclaration' ||
           (node.type === 'FunctionExpression' && node.id)
@@ -171,7 +170,7 @@ export function transform(
         node.type === 'ForStatement' ||
         node.type === 'WhileStatement'
       ) {
-        scopes.push(new Scope(node, scope));
+        scopes.push(new Scope(node, false, scope));
       } else if (node.type === 'Property') {
         skipEnter.set(node.key, 'deep');
       } else if (node.type === 'VariableDeclaration') {
@@ -181,10 +180,8 @@ export function transform(
             scope.declarations.set(v, n);
           }
         }
-      } else if (node.type === 'Identifier') {
+      } else if (node.type === 'Identifier' || node.type === 'ThisExpression') {
         scope.addReference(node);
-      } else if (node.type === 'ThisExpression') {
-        scope.references.push({ local: true, id: node });
       }
     },
     leave(n, p) {
@@ -209,12 +206,12 @@ export function transform(
         // }
 
         for (const ref of blockScope.references) {
-          const refName = ref.id.type === 'Identifier' ? ref.id.name : 'this';
-          if (
-            // !blockScope.aliases.has(refName) &&
-            !blockScope.declarations.has(refName)
-          ) {
-            parentScope.references.push({ local: false, id: ref.id });
+          if (ref.type === 'Identifier') {
+            if (!blockScope.declarations.has(ref.name)) {
+              parentScope.references.push(ref);
+            }
+          } else if (!blockScope.thisable) {
+            parentScope.references.push(ref);
           }
         }
 
@@ -360,30 +357,19 @@ export type Closure = {
 };
 
 class Scope {
-  public declarations = new Map<string, TypedNode>();
-  public references: { local: boolean; id: Identifier | ThisExpression }[] = [];
-  public aliases = new Map<string, Replacement>();
-  public tasks: TransformTask[] = [];
+  public readonly declarations = new Map<string, TypedNode>();
+  public readonly references: (Identifier | ThisExpression)[] = [];
+  public readonly aliases = new Map<string, Replacement>();
+  public readonly tasks: TransformTask[] = [];
 
-  addReference(id: Identifier) {
-    this.references.push({ local: true, id });
-  }
+  constructor(
+    public owner: TypedNode,
+    public thisable: boolean,
+    public parent?: Scope
+  ) {}
 
-  substitute(variable: string, recursive = true) {
-    let scope: Scope | undefined = this;
-    while (scope) {
-      const { aliases, declarations } = scope;
-      if (aliases.has(variable)) {
-        return aliases.get(variable)!;
-      }
-      if (declarations.has(variable)) {
-        return null;
-      }
-      if (!recursive) break;
-
-      scope = scope.parent;
-    }
-    return null;
+  addReference(id: Identifier | ThisExpression) {
+    this.references.push(id);
   }
 
   get root() {
@@ -393,25 +379,15 @@ class Scope {
     }
     return scope;
   }
-  private trappedReferences() {
-    const { references } = this;
-    const result: (Identifier | ThisExpression)[] = [];
-    for (const ref of references) {
-      if (ref.id.type === 'Identifier') {
-        if (this.isTrapped(ref.id.name)) {
-          result.push(ref.id);
-        }
-      } else {
-        result.push(ref.id);
-      }
-    }
-    return result;
-  }
 
-  resolve(variable: string) {
+  resolve(ref: Identifier | ThisExpression) {
     let scope: Scope | undefined = this;
     while (scope) {
-      if (scope.declarations.has(variable)) return scope;
+      if (ref.type === 'Identifier') {
+        if (scope.declarations.has(ref.name)) return scope;
+      } else if (scope.thisable) {
+        return scope;
+      }
       scope = scope.parent;
     }
     return null;
@@ -423,34 +399,36 @@ class Scope {
 
   paramsAndArgs() {
     const scope = this;
-    const trappedReferences = scope.trappedReferences();
     const params = new Set<string>();
     const args = new Set<string>();
-    for (const ref of trappedReferences) {
-      // use magic to get alias of ref
-      // const refName = magicString.slice(ref.start, ref.end);
-      if (ref.type === 'Identifier') {
-        const refName = ref.name;
-        const refScope = scope.resolve(refName);
-        if (!refScope || !refScope.isRoot) {
-          args.add(refName);
-          params.add(refName);
-        }
-      } else {
-        const replacement = scope.substitute('this');
-        if (replacement) {
+    for (const ref of scope.references) {
+      const refScope = this.resolve(ref);
+      if (refScope !== null && refScope != scope && !refScope.isRoot) {
+        // use magic to get alias of ref
+        // const refName = magicString.slice(ref.start, ref.end);
+        if (ref.type === 'Identifier') {
+          const refName = ref.name;
+          const decl = refScope.declarations.get(refName)!;
+          if (refScope.tasks.every((t) => t.node !== decl)) {
+            args.add(refName);
+            params.add(refName);
+          }
+        } else {
+          const replacement = `this_${refScope.owner.start}`;
           args.add('this');
-          params.add(replacement.content);
+          params.add(replacement);
         }
       }
     }
 
     if (params.size !== args.size) throw Error('args.size !== params.size');
 
+    if (scope.parent) {
+      const [parentParams, parentArgs] = scope.parent.paramsAndArgs();
+    }
+
     return [[...params], [...args]];
   }
-
-  constructor(public owner: TypedNode, public parent?: Scope) {}
 
   getTrapped(references: Identifier[]) {
     const result: string[] = [];
@@ -495,10 +473,9 @@ class Scope {
   ) {
     if (searchName !== replacement)
       for (const ref of this.references) {
-        const refName = ref.id.type === 'Identifier' ? ref.id.name : 'this';
+        const refName = ref.type === 'Identifier' ? ref.name : 'this';
         if (searchName === refName) {
-          magicString.remove(ref.id.start, ref.id.end);
-          magicString.appendLeft(ref.id.start, `(${replacement})`);
+          magicString.overwrite(ref.start, ref.end, `(${replacement})`);
         }
       }
   }
@@ -634,7 +611,7 @@ function exportFuncExpression(
       magicString.appendLeft(node.start, ' = ' + alias);
     else magicString.appendLeft(node.start, ' : ' + alias);
     if (args.length > 0) {
-      magicString.appendLeft(node.start, `(${[...args].join(',')})`);
+      magicString.appendLeft(node.start, `(${args.join(',')})`);
     }
   } else if (!isRoot) {
     //   //       const funcNode = node as any as acorn.Node;

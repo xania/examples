@@ -129,13 +129,11 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const kodrqgryhc = (this_36) =>
-        __closure( "kodrqgryhc", function () {
-            return this_36;
-          }, [this_36]
-        );
+      export const kodrqgryhc = __closure("kodrqgryhc", function () {
+        return this;
+      });
       export class State {
-        method = kodrqgryhc(this);
+        method = kodrqgryhc;
       }
       __closure("State", State);
     `;
@@ -236,6 +234,34 @@ describe('transform classes', () => {
       }
       __closure("State", State);    
     `;
+
+    assertTransform(code, expected);
+  });
+
+  it('embedded this reference', () => {
+    const code = `
+      export class JsxElement {
+        setProp() {
+          call(() => this);
+
+          return this;
+        }
+      }
+    `;
+
+    const expected = `
+      export const yqynrdnkqn = __closure("yqynrdnkqn", function () {
+        call(fvdjgdfjka(this));
+      
+        return this;
+      });
+      export const fvdjgdfjka = (this_48) =>
+        __closure("fvdjgdfjka", () => this_48, [this_48]);
+      export class JsxElement {
+        setProp = yqynrdnkqn;
+      }
+      __closure("JsxElement", JsxElement);
+      `;
 
     assertTransform(code, expected);
   });
