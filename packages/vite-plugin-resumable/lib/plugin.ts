@@ -1,6 +1,7 @@
 ﻿import type { Plugin } from 'vite';
 import kleur from 'kleur';
 import { FileRouteResolver, transform, ViewResult } from '../../resumable/';
+import { promises } from 'node:fs';
 
 export interface Options {
   resolvePage?(url: string): Promise<string>;
@@ -34,7 +35,8 @@ export function resumable(xn?: Options): Plugin {
           const pageUrl = await resolvePage(reqUrl);
           if (pageUrl) {
             try {
-              const page = await vite.ssrLoadModule(pageUrl, {
+              const pageResumeUrl = toResumeUrl(pageUrl);
+              const page = await vite.ssrLoadModule(pageResumeUrl, {
                 fixStacktrace: false,
               });
 
@@ -71,6 +73,7 @@ export function resumable(xn?: Options): Plugin {
               }
             } catch (err: any) {
               console.log(kleur.red(err));
+              throw err;
             }
           }
         }
@@ -78,37 +81,85 @@ export function resumable(xn?: Options): Plugin {
         return next();
       });
     },
+
     // async resolveId(source, importer, options) {
-    //   if (options.ssr) {
-    //     const resolved = await this.resolve(source, importer, options);
+    //   const match = source.match(/\.resume\./);
+    //   if (match) {
+    //     const path =
+    //       source.slice(0, match.index) + source.slice((match.index || 0) + 7);
+    //     const resolved = await this.resolve(path, importer, options);
+    //     if (resolved) {
+    //       return {
+    //         id: resolved.id + '?resume',
+    //         resolvedBy: 'xania',
+    //       };
+    //     }
     //   }
-    //   // const match = source.match(/\:(.*)$/);
-    //   // if (match) {
-    //   //   const resolved = await this.resolve(
-    //   //     source.slice(0, match.index),
-    //   //     importer,
-    //   //     options
-    //   //   );
-
-    //   //   if (resolved) {
-    //   //     return {
-    //   //       ...resolved,
-    //   //       id: resolved?.id + match[0],
-    //   //     };
-    //   //   }
-    //   // }
     // },
+    resolveId: {
+      order: 'post',
+      handler: async function (source, importer, options) {
+        const baseFile =
+          importer && importer.startsWith('/')
+            ? 'c:/dev/xania-examples' + importer
+            : importer;
 
-    transform(code, id, options) {
-      if (id.match(/\.tsx?$/)) {
+        const url = parseResumeUrl(source);
+        if (url) {
+          const resolved = await this.resolve(url, baseFile, options);
+          if (resolved) {
+            return {
+              ...resolved,
+              id: toResumeUrl(resolved.id),
+            };
+          }
+          return resolved;
+        }
+      },
+    },
+    // if (match) {
+    //   const resolved = await this.resolve(
+    //     source.slice(0, match.index),
+    //     importer,
+    //     options
+    //   );
+
+    //   if (resolved) {
+    //     return {
+    //       ...resolved,
+    //       id: resolved?.id + match[0],
+    //     };
+    //   }
+    // }
+
+    async load(id, options) {
+      const url = parseResumeUrl(id);
+      if (url) {
+        const resolved = await this.resolve(url);
+        if (resolved) {
+          const file = resolved.id;
+          const code = await promises.readFile(file, 'utf-8');
+
+          return {
+            code,
+          };
+        }
+      }
+    },
+
+    transform: {
+      order: 'post',
+      async handler(code, id, options) {
         try {
-          return transform(code, {});
+          if (/\.resume\.[tj]sx?$/.test(id)) {
+            return transform(code, { ssr: options?.ssr });
+          }
         } catch {
           debugger;
         }
-      }
 
-      return undefined;
+        return undefined;
+      },
     },
   } as Plugin;
 }
@@ -133,3 +184,23 @@ export function resumable(xn?: Options): Plugin {
 //     load() {},
 //   };
 // }
+
+function parseResumeUrl(id: string | undefined) {
+  if (!id) return null;
+  const match = id.match(/\.resume\.[jt]sx?$/);
+  if (match) {
+    const ext = id.slice((match.index || 0) + 7);
+    const url = id.slice(0, match.index) + ext;
+    return url;
+  }
+  return null;
+}
+
+function toResumeUrl(url: string) {
+  const match = url.match(/\.[jt]sx?$/);
+  if (!match) {
+    return url;
+  }
+
+  return url.slice(0, match.index) + '.resume' + url.slice(match.index);
+}

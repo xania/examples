@@ -12,7 +12,7 @@ export default defineConfig({
       "~": path.resolve(__dirname),
       "@xania/view": path.resolve(__dirname, "packages/view/lib/index.ts"),
       "@xania/state": path.resolve(__dirname, "packages/state/lib/index.ts"),
-      "@xania/resumable": path.resolve(__dirname, "packages/resumable/index.ts")
+      "@xania/resumable": path.resolve(__dirname, "packages/resumable")
     }
   },
   server: {

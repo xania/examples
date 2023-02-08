@@ -5,6 +5,7 @@ import {
   ClassDeclaration,
   ClassExpression,
   Declaration,
+  ExportAllDeclaration,
   ExportDefaultDeclaration,
   ExportNamedDeclaration,
   Expression,
@@ -34,6 +35,8 @@ declare module 'estree' {
   }
 }
 
+const CSS_LANGS_RE =
+  /\.(css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/;
 export const CLOSURE_HELPER = `;function __closure(name, fn, args) { return Object.assign(fn, {__src: import.meta.url, __name: name, __args: args}) }`;
 
 type TypedNode =
@@ -54,10 +57,12 @@ type TypedNode =
   | PropertyDefinition
   | WhileStatement
   | ThisExpression
-  | PrivateIdentifier;
+  | PrivateIdentifier
+  | ExportAllDeclaration;
 
 export type TransfromOptions = {
   // entry: string[];
+  ssr?: boolean;
   includeHelper?: boolean;
 };
 
@@ -114,6 +119,33 @@ export function transform(
         if (mode === 'deep') {
           this.skip();
         }
+      } else if (
+        node.type === 'ImportDeclaration' ||
+        node.type === 'ExportAllDeclaration'
+      ) {
+        if (CSS_LANGS_RE.test(node.source.value as string)) {
+          magicString.remove(node.start, node.end);
+          this.skip();
+        } else {
+          const source = node.source.raw;
+          if (source) {
+            const match = source.match(/\.[jt]sx?/);
+            if (match) {
+              magicString.appendLeft(
+                node.source.start + (match.index || 0),
+                '.resume'
+              );
+            } else {
+              console.error(source);
+            }
+          }
+          // console.log(node.source.end);
+          // magicString.appendLeft(node.source.end - 1, '?resume');
+        }
+        // magicString.appendLeft(
+        //   node.start,
+        //   `import { __assets } from ${node.source.raw};\n`
+        // );
       } else if (
         node.type === 'ClassDeclaration' ||
         node.type === 'ClassExpression'
@@ -239,7 +271,7 @@ export function transform(
         if (isRoot) {
           const id =
             parent.type === 'ExportDefaultDeclaration'
-              ? node.id?.name ?? __id(code, parent)
+              ? node.id?.name ?? __id(code, parent, exportIndex)
               : node.id!.name;
           scope.parent!.tasks.push({
             type: TransformTaskType.ExportFuncDeclaration,
@@ -255,7 +287,7 @@ export function transform(
           // const args: string[] = uniqueParams(scope.trappedReferences());
           //   const args = funcScope.getTrapped(references);
 
-          const alias = __id(code, node);
+          const alias = __id(code, node, exportIndex);
 
           // scope.parent!.aliases.set(node.id!.name, {
           //   content: args.length ? `${alias}(${args.join(',')})` : alias,
@@ -320,12 +352,13 @@ export function transform(
 
 function __id(
   str: string,
-  { id, start, end }: { id?: Identifier | null; start: number; end: number }
+  { id, start, end }: { id?: Identifier | null; start: number; end: number },
+  exportIndex: number
 ) {
   const baseName = id ? id.name.slice(0, 5) : '';
   const maxLen = 10 - baseName.length;
   const bits = new Int8Array({ length: maxLen }).fill(
-    (Math.abs(start - 97) % (122 - 97)) + 97
+    (Math.abs(start - exportIndex - 97) % (122 - 97)) + 97
   );
   for (let i = 0, len = end - start + 1; i < len; i++) {
     const u = i % maxLen;
@@ -594,7 +627,7 @@ function exportFuncExpression(
 
     // const args = funcScope.getTrapped(references);
 
-    const alias = __id(magicString.original, node);
+    const alias = __id(magicString.original, node, exportIndex);
     exportFuncClosure(
       magicString,
       exportIndex,
@@ -620,7 +653,7 @@ function exportFuncExpression(
       scope.updateReferences(magicString, args[i], params[i]);
     }
 
-    const id = __id(magicString.original, node);
+    const id = __id(magicString.original, node, exportIndex);
     // subsctitute expression reference
     magicString.appendLeft(node.start, `${id}`);
 

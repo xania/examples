@@ -3,7 +3,7 @@ import { State } from "../packages/state";
 import { Layout } from "./Layout";
 
 export default function () {
-  const state = new State(0);
+  const state = new State(10);
 
   function onClick() {
     state.set((x) => x + 1);
@@ -11,6 +11,7 @@ export default function () {
   return (
     <Layout>
       <button click={onClick}>Click me</button>
+      <button click={onClick}>Click me too</button>
       Counter: {state}
     </Layout>
   );

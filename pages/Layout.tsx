@@ -18,8 +18,6 @@ export function Layout({ children }) {
             href="https://fonts.googleapis.com/css?family=Roboto:300,400,500|Material+Icons"
             rel="stylesheet"
           />
-          <link href="/src/App.module.scss" rel="stylesheet" />
-          <link href="/src/examples/todo/index.module.scss" rel="stylesheet" />
         </head>
         <body id="app">{children}</body>
       </html>
