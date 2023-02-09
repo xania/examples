@@ -62,7 +62,7 @@ type TypedNode =
 
 export type TransfromOptions = {
   // entry: string[];
-  ssr?: boolean;
+  resume?: string;
   includeHelper?: boolean;
 };
 
@@ -113,39 +113,46 @@ export function transform(
       const parent = (p || ast) as TypedNode;
       let scope = scopes[scopes.length - 1]!;
 
+      if (
+        parent.type === 'ExportNamedDeclaration' ||
+        parent.type === 'ExportDefaultDeclaration'
+      ) {
+        scope.dependents.push([node, parent]);
+      }
+
       if (skipEnter.has(node)) {
         const mode = skipEnter.get(node);
         skipEnter.delete(node);
         if (mode === 'deep') {
           this.skip();
         }
+        return;
       } else if (
         node.type === 'ImportDeclaration' ||
         node.type === 'ExportAllDeclaration'
       ) {
-        if (CSS_LANGS_RE.test(node.source.value as string)) {
-          magicString.remove(node.start, node.end);
-          this.skip();
-        } else {
-          const source = node.source.raw;
-          if (source) {
-            const match = source.match(/\.[jt]sx?/);
-            if (match) {
-              magicString.appendLeft(
-                node.source.start + (match.index || 0),
-                '.resume'
-              );
-            } else {
-              console.error(source);
+        if (!opts.resume) {
+          if (CSS_LANGS_RE.test(node.source.value as string)) {
+            magicString.remove(node.start, node.end);
+            this.skip();
+          } else {
+            const source = node.source.raw;
+            if (source) {
+              const match = source.match(/\.[jt]sx?/);
+              if (match) {
+                magicString.appendLeft(
+                  node.source.start + (match.index || 0),
+                  '.resume'
+                );
+              } else {
+                console.error(source);
+              }
             }
           }
-          // console.log(node.source.end);
-          // magicString.appendLeft(node.source.end - 1, '?resume');
+        } else {
+          magicString.remove(node.start, node.end);
+          this.skip();
         }
-        // magicString.appendLeft(
-        //   node.start,
-        //   `import { __assets } from ${node.source.raw};\n`
-        // );
       } else if (
         node.type === 'ClassDeclaration' ||
         node.type === 'ClassExpression'
@@ -174,6 +181,10 @@ export function transform(
         node.type === 'FunctionExpression' ||
         node.type === 'ArrowFunctionExpression'
       ) {
+        if (node.type === 'FunctionDeclaration') {
+          scope.unused.add(node);
+        }
+
         const funcScope = new Scope(
           node,
           node.type !== 'ArrowFunctionExpression',
@@ -212,7 +223,9 @@ export function transform(
             scope.declarations.set(v, n);
           }
         }
-      } else if (node.type === 'Identifier' || node.type === 'ThisExpression') {
+      } else if (node.type === 'Identifier') {
+        scope.addReference(new Reference(node, scope));
+      } else if (node.type === 'ThisExpression') {
         scope.addReference(node);
       }
     },
@@ -238,8 +251,11 @@ export function transform(
         // }
 
         for (const ref of blockScope.references) {
-          if (ref.type === 'Identifier') {
-            if (!blockScope.declarations.has(ref.name)) {
+          if (ref instanceof Reference) {
+            if (blockScope.declarations.has(ref.id.name)) {
+              const decl = blockScope.declarations.get(ref.id.name)!;
+              blockScope.unused.delete(decl);
+            } else {
               parentScope.references.push(ref);
             }
           } else if (!blockScope.thisable) {
@@ -247,21 +263,13 @@ export function transform(
           }
         }
 
-        for (const [k, r] of blockScope.aliases) {
-          if (blockScope.declarations.has(k) && r.task) {
-            parentScope.tasks.push(r.task);
-            // parentScope.aliases.set(k, r);
-          }
-        }
         for (const cl of blockScope.tasks) {
-          parentScope.tasks.push(cl);
+          if (!blockScope.unused.has(cl.node)) parentScope.tasks.push(cl);
         }
-        // for (const [name, node] of blockScope.declarations) {
-        //   if (!blockScope.references.find((ref) => ref.name === name)) {
-        //     // console.log(parent.type);
-        //     // magicString.remove(node.start, node.end);
-        //   }
-        // }
+
+        for (const u of blockScope.unused) {
+          magicString.remove(u.start, u.end);
+        }
       }
 
       if (
@@ -324,8 +332,44 @@ export function transform(
       }
     },
   });
+  let reflen = rootScope.references.length;
+  while (reflen--) {
+    const ref = rootScope.references[reflen];
+    if (ref instanceof Reference) {
+      const decl = rootScope.declarations.get(ref.id.name);
+      if (decl && rootScope.unused.has(decl)) {
+        rootScope.unused.delete(decl);
+      }
+    }
+  }
 
-  for (const task of rootScope.tasks) {
+  let tasks: TransformTask[] = [];
+  if (opts.resume) {
+    const entryDecl = rootScope.declarations.get(opts.resume);
+    if (entryDecl) {
+      for (const task of rootScope.tasks) {
+        if (rootScope.unused.has(task.node)) {
+          // REMOVE unused scope
+          const scope = task.scope;
+          if (task.node.type === 'FunctionDeclaration') {
+            if (task.parent.type === 'ExportNamedDeclaration') {
+              magicString.remove(task.parent.start, task.node.start);
+            }
+
+            stripNode(task.node, magicString);
+          }
+
+          task.scope.references.length = 0;
+        } else {
+          tasks.push(task);
+        }
+      }
+    }
+  } else {
+    tasks = rootScope.tasks;
+  }
+
+  for (const task of tasks) {
     if (task.type === TransformTaskType.ExportFuncDeclaration) {
       const [params, args] = task.scope.paramsAndArgs();
       exportFuncClosure(magicString, exportIndex, task, args);
@@ -389,11 +433,17 @@ export type Closure = {
   id: string;
 };
 
+class Reference {
+  constructor(public id: Identifier, public scope: Scope) {}
+}
+
 class Scope {
   public readonly declarations = new Map<string, TypedNode>();
-  public readonly references: (Identifier | ThisExpression)[] = [];
+  public readonly references: (Reference | ThisExpression)[] = [];
   public readonly aliases = new Map<string, Replacement>();
   public readonly tasks: TransformTask[] = [];
+  public readonly dependents: [TypedNode, TypedNode][] = [];
+  public readonly unused = new Set<TypedNode>();
 
   constructor(
     public owner: TypedNode,
@@ -401,7 +451,7 @@ class Scope {
     public parent?: Scope
   ) {}
 
-  addReference(id: Identifier | ThisExpression) {
+  addReference(id: Reference | ThisExpression) {
     this.references.push(id);
   }
 
@@ -413,11 +463,11 @@ class Scope {
     return scope;
   }
 
-  resolve(ref: Identifier | ThisExpression) {
+  resolve(ref: Reference | ThisExpression) {
     let scope: Scope | undefined = this;
     while (scope) {
-      if (ref.type === 'Identifier') {
-        if (scope.declarations.has(ref.name)) return scope;
+      if (ref instanceof Reference) {
+        if (scope.declarations.has(ref.id.name)) return scope;
       } else if (scope.thisable) {
         return scope;
       }
@@ -439,8 +489,8 @@ class Scope {
       if (refScope !== null && refScope != scope && !refScope.isRoot) {
         // use magic to get alias of ref
         // const refName = magicString.slice(ref.start, ref.end);
-        if (ref.type === 'Identifier') {
-          const refName = ref.name;
+        if (ref instanceof Reference) {
+          const refName = ref.id.name;
           const decl = refScope.declarations.get(refName)!;
           if (refScope.tasks.every((t) => t.node !== decl)) {
             args.add(refName);
@@ -506,8 +556,11 @@ class Scope {
   ) {
     if (searchName !== replacement)
       for (const ref of this.references) {
-        const refName = ref.type === 'Identifier' ? ref.name : 'this';
-        if (searchName === refName) {
+        if (ref instanceof Reference) {
+          if (searchName === ref.id.name) {
+            magicString.overwrite(ref.id.start, ref.id.end, `(${replacement})`);
+          }
+        } else if (searchName === 'this') {
           magicString.overwrite(ref.start, ref.end, `(${replacement})`);
         }
       }
@@ -713,4 +766,26 @@ function exportFuncClosure(
     magicString.appendLeft(node.end, `);`);
     magicString.move(node.start, node.end, exportIndex);
   }
+}
+function stripNode(root: FunctionDeclaration, magicString: MagicString) {
+  let start = root.start;
+
+  walk(root.body, {
+    enter(n, p) {
+      if (
+        n.type === 'FunctionDeclaration' ||
+        n.type === 'FunctionExpression' ||
+        n.type === 'ArrowFunctionExpression' ||
+        n.type === 'ClassDeclaration' ||
+        n.type === 'ClassExpression'
+      ) {
+        magicString.remove(start, n.start);
+        start = n.end;
+
+        this.skip();
+      }
+    },
+  });
+
+  magicString.remove(start, root.end);
 }

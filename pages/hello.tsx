@@ -2,7 +2,7 @@
 import { State } from "../packages/state";
 import { Layout } from "./Layout";
 
-export default function () {
+export function view() {
   const state = new State(10);
 
   function onClick() {

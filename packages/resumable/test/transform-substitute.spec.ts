@@ -12,9 +12,9 @@ describe('substitute func reference', () => {
       }
       `;
     const expected = `
-      export const handlfoakt = __closure("handlfoakt", function handler() {});
+      export const handlomttt = __closure("handlomttt", function handler() {});
       export function App() {
-        return handlfoakt();
+        return handlomttt();
       }
       __closure("App", App);
         `;
@@ -33,17 +33,17 @@ describe('substitute func reference', () => {
       }
       `;
     const expected = `
-      export const setCojnhmq = __closure("setCojnhmq", function setCompleted() {});
-      export const Compoadcmy = __closure(
-          "Compoadcmy",
+      export const setCoslrkq = __closure("setCoslrkq", function setCompleted() {});
+      export const Compoacmme = __closure(
+          "Compoacmme",
           function Component() {
             return {
-              children: setCojnhmq,
+              children: setCoslrkq,
             };
           }
         );
       export function App() {
-        return Compoadcmy;
+        return Compoacmme;
       }
       __closure("App", App);
     `;
@@ -60,10 +60,10 @@ describe('substitute func reference', () => {
       }
       `;
     const expected = `
-      export const setCojnhmq = __closure("setCojnhmq", function setCompleted() {});
+      export const setCoslrkq = __closure("setCoslrkq", function setCompleted() {});
       export function App() {
         for (let i = 0; i < 100; i++) {
-          return setCojnhmq();
+          return setCoslrkq();
         }
       }
       __closure("App", App);
@@ -81,15 +81,15 @@ describe('substitute func reference', () => {
       }
       `;
     const expected = `
-      export const setCojnhmq = __closure("setCojnhmq", function setCompleted() {});
-      export const Compocivck = __closure(
-        "Compocivck",
+      export const setCoslrkq = __closure("setCoslrkq", function setCompleted() {});
+      export const Compoifuqa = __closure(
+        "Compoifuqa",
         class Component {
-          setCompleted = setCojnhmq;
+          setCompleted = setCoslrkq;
         }
       );
       export function App() {
-        return Compocivck;
+        return Compoifuqa;
       }
       __closure("App", App);
     `;

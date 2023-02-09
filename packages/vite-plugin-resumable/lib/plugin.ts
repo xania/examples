@@ -82,20 +82,6 @@ export function resumable(xn?: Options): Plugin {
       });
     },
 
-    // async resolveId(source, importer, options) {
-    //   const match = source.match(/\.resume\./);
-    //   if (match) {
-    //     const path =
-    //       source.slice(0, match.index) + source.slice((match.index || 0) + 7);
-    //     const resolved = await this.resolve(path, importer, options);
-    //     if (resolved) {
-    //       return {
-    //         id: resolved.id + '?resume',
-    //         resolvedBy: 'xania',
-    //       };
-    //     }
-    //   }
-    // },
     resolveId: {
       order: 'post',
       handler: async function (source, importer, options) {
@@ -117,20 +103,6 @@ export function resumable(xn?: Options): Plugin {
         }
       },
     },
-    // if (match) {
-    //   const resolved = await this.resolve(
-    //     source.slice(0, match.index),
-    //     importer,
-    //     options
-    //   );
-
-    //   if (resolved) {
-    //     return {
-    //       ...resolved,
-    //       id: resolved?.id + match[0],
-    //     };
-    //   }
-    // }
 
     async load(id, options) {
       const url = parseResumeUrl(id);
@@ -152,7 +124,10 @@ export function resumable(xn?: Options): Plugin {
       async handler(code, id, options) {
         try {
           if (/\.resume\.[tj]sx?$/.test(id)) {
-            return transform(code, { ssr: options?.ssr });
+            return transform(code, {
+              resume:
+                !options?.ssr && id.includes('/pages/') ? 'view' : undefined,
+            });
           }
         } catch {
           debugger;

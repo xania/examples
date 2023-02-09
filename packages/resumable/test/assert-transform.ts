@@ -1,9 +1,14 @@
 ﻿import { expect } from 'vitest';
-import { transform } from '../lib/transform';
+import { transform, TransfromOptions } from '../lib/transform';
 import prettier from 'prettier';
 
-export function assertTransform(code: string, expectedOutput) {
+export function assertTransform(
+  code: string,
+  expectedOutput: string,
+  options?: TransfromOptions
+) {
   let transformedCode = transform(code, {
+    ...options,
     includeHelper: false,
   })!.code;
 

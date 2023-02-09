@@ -34,9 +34,9 @@ describe('transform classes', () => {
       }
       `;
     const expected = `
-      export const Stategsseu = __closure("Stategsseu", class State {});
+      export const Statewyjkw = __closure("Statewyjkw", class State {});
       export function App() {
-        return new Stategsseu();
+        return new Statewyjkw();
       }
       __closure("App", App);
     `;
@@ -56,9 +56,9 @@ describe('transform classes', () => {
       }
       `;
     const expected = `
-      export const Stateiadeo = (a) =>
+      export const Statecpdlo = (a) =>
         __closure(
-          "Stateiadeo",
+          "Statecpdlo",
           class State {
             constructor() {
               console.log(a);
@@ -69,7 +69,7 @@ describe('transform classes', () => {
       export function App() {
         const a = 1;
       
-        return new (Stateiadeo(a))();
+        return new (Statecpdlo(a))();
       }
       __closure("App", App);
       `;
@@ -104,16 +104,16 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const xjhiabkoul = (this_36) =>
+      export const yikjuqullw = (this_36) =>
         __closure(
-          "xjhiabkoul",
+          "yikjuqullw",
           () => {
             return this_36;
           },
           [this_36]
         );
       export class State {
-        arrow = xjhiabkoul(this);
+        arrow = yikjuqullw(this);
       }
       __closure("State", State);
     `;
@@ -129,11 +129,11 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const kodrqgryhc = __closure("kodrqgryhc", function () {
+      export const vdkkvnuikr = __closure("vdkkvnuikr", function () {
         return this;
       });
       export class State {
-        method = kodrqgryhc;
+        method = vdkkvnuikr;
       }
       __closure("State", State);
     `;
@@ -171,40 +171,14 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const Compocojui = __closure("Compocojui", function Component() {
+      export const Compowoqko = __closure("Compowoqko", function Component() {
         return State;
       });
       export class State {}
       __closure("State", State);
       
       export function App() {
-        return Compocojui;
-      }
-      __closure("App", App);
-    `;
-    assertTransform(code, expected);
-  });
-
-  it('export class reference', () => {
-    const code = `
-      export class State {
-      }
-
-      function App() {
-        return function Component() {
-          return State;
-        }
-      }
-    `;
-    const expected = `
-      export const Compocojui = __closure("Compocojui", function Component() {
-        return State;
-      });
-      export class State {}
-      __closure("State", State);
-      
-      export function App() {
-        return Compocojui;
+        return Compowoqko;
       }
       __closure("App", App);
     `;
@@ -223,13 +197,13 @@ describe('transform classes', () => {
     `;
 
     const expected = `
-      export const bldklkwcqp = (this_36) =>
-        __closure("bldklkwcqp", () => { return this_36; },
+      export const muvrivprxw = (this_36) =>
+        __closure("muvrivprxw", () => { return this_36; },
           [this_36]
         );
       export class State {
         constructor() {
-          this.arrow = bldklkwcqp(this);
+          this.arrow = muvrivprxw(this);
         }
       }
       __closure("State", State);    
@@ -250,15 +224,15 @@ describe('transform classes', () => {
     `;
 
     const expected = `
-      export const yqynrdnkqn = __closure("yqynrdnkqn", function () {
-        call(fvdjgdfjka(this));
+      export const kxtxorhkkj = __closure("kxtxorhkkj", function () {
+        call(vdvqpvxsrq(this));
       
         return this;
       });
-      export const fvdjgdfjka = (this_48) =>
-        __closure("fvdjgdfjka", () => this_48, [this_48]);
+      export const vdvqpvxsrq = (this_48) =>
+        __closure("vdvqpvxsrq", () => this_48, [this_48]);
       export class JsxElement {
-        setProp = yqynrdnkqn;
+        setProp = kxtxorhkkj;
       }
       __closure("JsxElement", JsxElement);
       `;
