@@ -102,21 +102,27 @@ describe('client scripts', () => {
   });
   it('regression', () => {
     const code = `
-    var c;
-    ((s) => {
-      ((t) => {
-        t[t.Map = 0] = "Map", t[t.Bind = 1] = "Bind", t[t.Connect = 2] = "Connect", t[t.Property = 3] = "Property", t[t.Merge = 4] = "Merge";
-      })(s.StateOperatorType || (s.StateOperatorType = {}));
-    })(c || (c = {}));
+      var c;
+      ((s) => {
+        ((t) => {
+          t[t.Map = 0] = "Map", t[t.Bind = 1] = "Bind", t[t.Connect = 2] = "Connect", t[t.Property = 3] = "Property", t[t.Merge = 4] = "Merge";
+        })(s.StateOperatorType || (s.StateOperatorType = {}));
+      })(c || (c = {}));
     `;
     const expected = `
-    ;export const ljfgtgudgw = __closure("ljfgtgudgw", (s) => {
-      (bsavvoloii)(s.StateOperatorType || (s.StateOperatorType = {}));
-    });export const bsavvoloii = __closure("bsavvoloii", (t) => {
-        t[t.Map = 0] = "Map", t[t.Bind = 1] = "Bind", t[t.Connect = 2] = "Connect", t[t.Property = 3] = "Property", t[t.Merge = 4] = "Merge";
-      });var c;
-    ()(c || (c = {}));
+      var c;
+      export const ysrkcqisna = __closure("ysrkcqisna", (s) => {
+        sucsysuulx(s.StateOperatorType || (s.StateOperatorType = {}));
+      });
+      export const sucsysuulx = __closure("sucsysuulx", (t) => {
+        (t[(t.Map = 0)] = "Map"),
+          (t[(t.Bind = 1)] = "Bind"),
+          (t[(t.Connect = 2)] = "Connect"),
+          (t[(t.Property = 3)] = "Property"),
+          (t[(t.Merge = 4)] = "Merge");
+      });
+      ysrkcqisna(c || (c = {}));
     `;
-    assertTransform(code, expected, { ssr: false });
+    assertTransform(code, expected, { ssr: true });
   });
 });

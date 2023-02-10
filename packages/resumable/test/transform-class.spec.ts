@@ -171,14 +171,14 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const Compowoqko = __closure("Compowoqko", function Component() {
-        return State;
-      });
       export class State {}
       __closure("State", State);
-      
+
+      export const Compodbrtk = __closure("Compodbrtk", function Component() {
+        return State;
+      });
       export function App() {
-        return Compowoqko;
+        return Compodbrtk;
       }
       __closure("App", App);
     `;

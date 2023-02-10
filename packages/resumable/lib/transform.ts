@@ -75,15 +75,11 @@ export function transform(
     ecmaVersion: 'latest',
   }) as Program;
 
-  const rootScope = new Scope(ast, false);
+  const rootScope = new Scope(0, ast, false);
   const scopes = [rootScope];
   const magicString = new MagicString(code);
 
-  for (const root of ast.body) {
-    const exportIndex = root.start;
-  }
-  const exportIndex =
-    ast.body.find((n) => n.type !== 'ImportDeclaration')?.start ?? 0;
+  let rootStart = 0;
 
   // magicString.prependLeft(exportIndex, ';');
 
@@ -94,6 +90,10 @@ export function transform(
       const node = n as TypedNode;
       const parent = (p || ast) as TypedNode;
       let scope = scopes[scopes.length - 1]!;
+
+      if (p === ast) {
+        rootStart = node.start;
+      }
 
       // if (
       //   parent.type === 'ExportNamedDeclaration' ||
@@ -139,7 +139,7 @@ export function transform(
         node.type === 'ClassDeclaration' ||
         node.type === 'ClassExpression'
       ) {
-        const classScope = new Scope(node, true, scope);
+        const classScope = new Scope(rootStart, node, true, scope);
         scopes.push(classScope);
 
         if (node.id) {
@@ -158,7 +158,7 @@ export function transform(
         if (node.type === 'MethodDefinition' && node.kind === 'constructor')
           skipEnter.set(node.value, 'shallow');
 
-        const memberScope = new Scope(node, true, scope);
+        const memberScope = new Scope(rootStart, node, true, scope);
         scopes.push(memberScope);
       } else if (
         node.type === 'FunctionDeclaration' ||
@@ -170,6 +170,7 @@ export function transform(
         }
 
         const funcScope = new Scope(
+          rootStart,
           node,
           node.type !== 'ArrowFunctionExpression',
           scope
@@ -197,7 +198,7 @@ export function transform(
         node.type === 'ForStatement' ||
         node.type === 'WhileStatement'
       ) {
-        scopes.push(new Scope(node, false, scope));
+        scopes.push(new Scope(rootStart, node, false, scope));
       } else if (node.type === 'VariableDeclaration') {
         for (const declarator of node.declarations) {
           skipEnter.set(declarator.id, 'deep');
@@ -244,7 +245,7 @@ export function transform(
         if (isRoot) {
           const id =
             parent.type === 'ExportDefaultDeclaration'
-              ? node.id?.name ?? __id(code, parent, exportIndex)
+              ? node.id?.name ?? __id(code, parent, scope.rootStart)
               : node.id!.name;
           scope.parent!.tasks.push({
             type: TransformTaskType.ExportFuncDeclaration,
@@ -260,7 +261,7 @@ export function transform(
           // const args: string[] = uniqueParams(scope.trappedReferences());
           //   const args = funcScope.getTrapped(references);
 
-          const alias = __id(code, node, exportIndex);
+          const alias = __id(code, node, scope.rootStart);
 
           // scope.parent!.aliases.set(node.id!.name, {
           //   content: args.length ? `${alias}(${args.join(',')})` : alias,
@@ -281,7 +282,7 @@ export function transform(
         node.type === 'ArrowFunctionExpression' ||
         node.type === 'ClassExpression'
       ) {
-        const alias = __id(code, node, exportIndex);
+        const alias = __id(code, node, scope.rootStart);
 
         if (parent.type !== 'MethodDefinition' || parent.kind === 'method') {
           scope.parent!.tasks.push({
@@ -367,7 +368,7 @@ export function transform(
 
       if (task.type === TransformTaskType.ExportFuncDeclaration) {
         // const params = args.map((a) => aliases[a]);
-        exportFuncClosure(magicString, exportIndex, task, args);
+        exportFuncClosure(magicString, scope.rootStart, task, args);
 
         // const funcAlias =
         //   params.length > 0 ? `${task.alias}(${params.join(',')})` : task.alias;
@@ -375,7 +376,7 @@ export function transform(
         // task.scope.parent!.updateReferences(magicString, {
         //   [task.id]: funcAlias,
         // });
-      } else exportFuncExpression(magicString, exportIndex, task);
+      } else exportFuncExpression(magicString, task);
     }
   }
 
@@ -439,6 +440,7 @@ class Scope {
   public readonly children: Scope[] = [];
 
   constructor(
+    public rootStart: number,
     public owner: TypedNode,
     public thisable: boolean,
     public parent?: Scope
@@ -633,7 +635,6 @@ interface ExportFuncExpression {
 
 function exportFuncExpression(
   magicString: MagicString,
-  exportIndex: number,
   task: ExportFuncExpression
 ) {
   const { parent, node, scope, isRoot, alias } = task;
@@ -658,7 +659,7 @@ function exportFuncExpression(
 
     exportFuncClosure(
       magicString,
-      exportIndex,
+      scope.rootStart,
       {
         parent,
         node,
@@ -676,7 +677,7 @@ function exportFuncExpression(
     //   //       const funcNode = node as any as acorn.Node;
     const aliases = scope.paramsAndArgs();
 
-    const id = __id(magicString.original, node, exportIndex);
+    const id = __id(magicString.original, node, scope.rootStart);
     // subsctitute expression reference
     // magicString.appendLeft(node.start, `${id}`);
 
@@ -693,7 +694,7 @@ function exportFuncExpression(
     // export definition
     magicString.appendRight(node.start, `__closure("${id}", `);
     magicString.appendLeft(node.end, `);`);
-    magicString.move(node.start, node.end, exportIndex);
+    magicString.move(node.start, node.end, scope.rootStart);
   }
 }
 
