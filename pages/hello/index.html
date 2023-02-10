@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html data-hk="hk-1">
+  <head>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, user-scalable=no,maximum-scale=1"
+    />
+    <title>Xania App</title>
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,500|Material+Icons"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <button>Click me</button><button>Click me too</button>Counter:
+    <!--separator-->10
+  </body>
+</html>
+<script
+  type="module">
+
+import { hydrate as __hydrate } from "./packages/resumable/lib/hydrate.ts";
+
+const hydrationRoot = document.querySelector('[data-hk="hk-1"]');
+var cIter = document.createNodeIterator(
+  document.body,
+  NodeFilter.SHOW_COMMENT
+);
+while(cIter.nextNode()){
+  if(cIter.referenceNode.data === 'separator')
+  cIter.referenceNode.remove();
+}
+const __refs = {};
+const __cache = {};
+__refs[1]=[__refs[2]={"handler":__refs[3]={"__args":__refs[4]=[(__refs[5]={"observers":__refs[6]=[__refs[7]={"next":__refs[8]={"__name":"ltkbsqbouu","__ldr":ld_sadowxq,},"textNode":__refs[9]=__refs[10]={"__node":__refs[11]=[1,3,],},},],"dirty":false,"operators":__refs[12]=[],"snapshot":10,__ctor:__refs[13]={"__name":"m","__ldr":ld_qqxsuqu,}},__refs[5]),],"__name":"onClijcrsi","__ldr":ld_mmutykp,},"nav":__refs[14]=[__refs[15]={"index":1,"type":693573,},__refs[16]={"index":0,"type":693573,},],"name":"click",},__refs[17]={"handler":__refs[18]={"__args":__refs[19]=[__refs[5],],"__name":"onClijcrsi","__ldr":ld_mmutykp,},"nav":__refs[20]=[__refs[21]={"index":1,"type":693573,},__refs[22]={"index":1,"type":693573,},],"name":"click",},];
+function ld_mmutykp(){ return import("./pages/hello.resume.tsx") }
+function ld_qqxsuqu(){ return import("./packages/state/dist/main.resume.js") }
+function ld_sadowxq(){ return import("./packages/view/lib/render/execute.resume.ts") }
+hydrationRoot.addEventListener("click", function(evt) { const elt = hydrationRoot.firstChild.nextSibling.firstChild;
+
+
+(__cache[4] ?? (__cache[4] = __hydrate(__refs[4], hydrationRoot))).then(args => {
+  import("/pages/hello.resume.tsx").then(mod => {
+    const handler = mod.onClijcrsi.apply(null, args);
+    handler(evt)
+  });  
+});
+
+ });hydrationRoot.addEventListener("click", function(evt) { const elt = hydrationRoot.firstChild.nextSibling.firstChild.nextSibling;
+
+
+(__cache[19] ?? (__cache[19] = __hydrate(__refs[19], hydrationRoot))).then(args => {
+  import("/pages/hello.resume.tsx").then(mod => {
+    const handler = mod.onClijcrsi.apply(null, args);
+    handler(evt)
+  });  
+});
+
+ });
+</script>
+></script>

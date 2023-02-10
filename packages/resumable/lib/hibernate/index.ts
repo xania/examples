@@ -120,6 +120,11 @@ function importDesc(value: any, importMap: ImportMap) {
     __args: any;
   };
 
+  if (!__src || !__name) {
+    console.error('value has not import dscription', value);
+    return null;
+  }
+
   const prefix = 'file:///C:/dev/xania-examples';
   const url = __src.startsWith(prefix) ? __src.slice(prefix.length) : __src;
 

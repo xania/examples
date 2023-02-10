@@ -377,13 +377,18 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      const App = __closure("App", function App() {
-        return Compoqluqm;
-      });
       const jsx = null;
-      export const Compoqluqm = __closure("Compoqluqm", function Component() {
-        return jsx;
+      const App = __closure("App", function App() {
+        return Compoqluqm(jsx);
       });
+      export const Compoqluqm = (jsx) =>
+        __closure(
+          "Compoqluqm",
+          function Component() {
+            return jsx;
+          },
+          [jsx]
+        );
       export default App;
     `;
     assertTransform(code, expected);

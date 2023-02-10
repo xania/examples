@@ -62,13 +62,13 @@ type TypedNode =
 
 export type TransfromOptions = {
   // entry: string[];
-  ssr?: boolean;
+  // ssr?: boolean;
   includeHelper?: boolean;
 };
 
 export function transform(
   code: string,
-  opts: TransfromOptions = { ssr: true }
+  opts: TransfromOptions
 ): { code: string; map: any } | undefined {
   const ast = acorn.parse(code, {
     sourceType: 'module',
@@ -113,28 +113,27 @@ export function transform(
         node.type === 'ImportDeclaration' ||
         node.type === 'ExportAllDeclaration'
       ) {
-        if (opts.ssr) {
-          if (CSS_LANGS_RE.test(node.source.value as string)) {
-            magicString.remove(node.start, node.end);
-            this.skip();
-          } else {
-            const source = node.source.raw;
-            if (source) {
-              const match = source.match(/\.[jt]sx?/);
-              if (match) {
-                magicString.appendLeft(
-                  node.source.start + (match.index || 0),
-                  '.resume'
-                );
-              } else {
-                console.error(source);
-              }
-            }
-          }
-        } else {
-          magicString.remove(node.start, node.end);
-          this.skip();
-        }
+        // if (CSS_LANGS_RE.test(node.source.value as string)) {
+        //   // magicString.remove(node.start, node.end);
+        //   this.skip();
+        // } else {
+        //   const source = node.source.raw;
+        //   if (source) {
+        //     const match = source.match(/\.[jt]sx?/);
+        //     if (match) {
+        //       magicString.appendLeft(
+        //         node.source.start + (match.index || 0),
+        //         '.resume'
+        //       );
+        //     } else {
+        //       console.error(source);
+        //     }
+        //   }
+        // }
+        // } else {
+        //   magicString.remove(node.start, node.end);
+        //   this.skip();
+        // }
       } else if (
         node.type === 'ClassDeclaration' ||
         node.type === 'ClassExpression'
@@ -313,53 +312,49 @@ export function transform(
     }
   }
 
-  const rootAliases = rootScope.paramsAndArgs();
-
-  let references: Scope['references'] = [];
   const closeResult = rootScope.close();
-  if (!opts.ssr) {
-    references = closeResult[0];
+  // if (!opts.ssr) {
+  //   references = closeResult[0];
 
-    for (const node of closeResult[1]) {
-      if (node.type === 'FunctionDeclaration') {
-        stripNode(node, magicString);
-      } else if (node.type === 'ClassDeclaration') {
-        stripNode(node, magicString);
-      }
-    }
+  //   for (const node of closeResult[1]) {
+  //     if (node.type === 'FunctionDeclaration') {
+  //       stripNode(node, magicString);
+  //     } else if (node.type === 'ClassDeclaration') {
+  //       stripNode(node, magicString);
+  //     }
+  //   }
 
-    for (const node of ast.body) {
-      if (node.type === 'ExportNamedDeclaration') {
-        const decl = node.declaration!;
-        if (rootScope.unused.has(decl)) {
-          magicString.remove(node.start, decl.start);
-        }
-      }
-    }
-  } else {
-    references = rootScope.references;
-  }
-  updateReferences(references, magicString, rootAliases);
+  //   for (const node of ast.body) {
+  //     if (node.type === 'ExportNamedDeclaration') {
+  //       const decl = node.declaration!;
+  //       if (rootScope.unused.has(decl)) {
+  //         magicString.remove(node.start, decl.start);
+  //       }
+  //     }
+  //   }
+  // } else {
+  // }
+  const references = rootScope.references;
+  // updateReferences(references, magicString, rootAliases);
+  // updateScopeReferences(magicString, rootScope);
+  updateScopeReferences(magicString, rootScope);
 
-  const ssr = opts.ssr ?? true;
-  const stack = [[rootScope, ssr] as const];
+  // const ssr = opts.ssr ?? true;
+  const stack = [rootScope];
   while (stack.length) {
-    const [scope, parentUsed] = stack.pop()!;
+    const scope = stack.pop()!;
     updateTaskReference(magicString, scope);
 
     for (const child of scope.children) {
-      stack.push([
-        child,
-        ssr || (parentUsed && !rootScope.unused.has(child.owner)),
-      ]);
+      stack.push(child);
     }
 
     for (const task of scope.tasks) {
-      if (!opts.ssr && scope.unused.has(task.node)) continue;
+      // if (!opts.ssr && scope.unused.has(task.node)) continue;
 
-      if (parentUsed) {
-        updateScopeTaskReference(magicString, task);
-      }
+      // if (parentUsed) {
+      updateScopeTaskReference(magicString, task);
+      // }
 
       const [args, params] = updateScopeReferences(magicString, task.scope);
 
@@ -368,7 +363,7 @@ export function transform(
 
       if (task.type === TransformTaskType.ExportFuncDeclaration) {
         // const params = args.map((a) => aliases[a]);
-        exportFuncClosure(magicString, scope.rootStart, task, args);
+        exportFuncClosure(magicString, task.scope.rootStart, task, args);
 
         // const funcAlias =
         //   params.length > 0 ? `${task.alias}(${params.join(',')})` : task.alias;
