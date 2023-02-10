@@ -10,7 +10,7 @@ describe('client scripts', () => {
     export * from "./view.tsx";
     `;
     const expected = ``;
-    assertTransform(code, expected, { resume: 'App' });
+    assertTransform(code, expected, { ssr: false });
   });
 
   it('remove unused even the exported ones', () => {
@@ -21,7 +21,7 @@ describe('client scripts', () => {
     }
     `;
     const expected = ``;
-    assertTransform(code, expected, { resume: 'App' });
+    assertTransform(code, expected, { ssr: false });
   });
 
   it('preserve used Component', () => {
@@ -36,7 +36,7 @@ describe('client scripts', () => {
       export function Component() {}
       __closure("Component", Component);
     `;
-    assertTransform(code, expected, { resume: 'App' });
+    assertTransform(code, expected, { ssr: false });
   });
 
   it('preserve used local Component', () => {
@@ -52,6 +52,24 @@ describe('client scripts', () => {
     const expected = `
     export const Compogsbnm = __closure("Compogsbnm", function Component() {});
     `;
-    assertTransform(code, expected, { resume: 'App' });
+    assertTransform(code, expected, { ssr: false });
+  });
+
+  it('preserve used property method but not the property itself', () => {
+    const code = `
+    export function App() {
+      return { 
+        property() {
+          return 1;
+        }
+      }
+    }
+    `;
+    const expected = `
+    export const ixyngnfpon = __closure("ixyngnfpon", function () {
+      return 1;
+    });
+    `;
+    assertTransform(code, expected, { ssr: false });
   });
 });

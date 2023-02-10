@@ -125,8 +125,7 @@ export function resumable(xn?: Options): Plugin {
         try {
           if (/\.resume\.[tj]sx?$/.test(id)) {
             return transform(code, {
-              resume:
-                !options?.ssr && id.includes('/pages/') ? 'view' : undefined,
+              ssr: true,
             });
           }
         } catch {

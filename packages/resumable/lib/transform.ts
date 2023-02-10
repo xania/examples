@@ -62,13 +62,13 @@ type TypedNode =
 
 export type TransfromOptions = {
   // entry: string[];
-  resume?: string;
+  ssr?: boolean;
   includeHelper?: boolean;
 };
 
 export function transform(
   code: string,
-  opts: TransfromOptions
+  opts: TransfromOptions = { ssr: true }
 ): { code: string; map: any } | undefined {
   const ast = acorn.parse(code, {
     sourceType: 'module',
@@ -83,27 +83,6 @@ export function transform(
     ast.body.find((n) => n.type !== 'ImportDeclaration')?.start ?? 0;
 
   magicString.prependLeft(exportIndex, ';');
-
-  // function exportFunction(
-  //   scope: Scope,
-  //   parent: TypedNode,
-  //   node: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression,
-  //   args: string[]
-  // ) {
-  //   const alias = __id(code, node);
-  //   scope.tasks.push({
-  //     type: TransformTaskType.ExportFuncDeclaration,
-  //     scope,
-  //     alias: alias,
-  //     isRoot: false,
-  //     args,
-  //     node,
-  //     parent,
-  //     id: ""
-  //   });
-  //   // scope.closures.push({ isRoot: false, parent, id, node, args });
-  //   return alias;
-  // }
 
   const skipEnter = new Map<TypedNode, 'deep' | 'shallow'>();
 
@@ -131,7 +110,7 @@ export function transform(
         node.type === 'ImportDeclaration' ||
         node.type === 'ExportAllDeclaration'
       ) {
-        if (!opts.resume) {
+        if (opts.ssr) {
           if (CSS_LANGS_RE.test(node.source.value as string)) {
             magicString.remove(node.start, node.end);
             this.skip();
@@ -164,15 +143,15 @@ export function transform(
           skipEnter.set(node.id, 'deep');
           scope.declarations.set(node.id.name, node);
         }
-      } else if (node.type === 'PropertyDefinition') {
+      } else if (
+        node.type === 'MethodDefinition' ||
+        node.type === 'PropertyDefinition' ||
+        node.type === 'Property'
+      ) {
         skipEnter.set(node.key, 'deep');
 
-        const memberScope = new Scope(node, true, scope);
-        scopes.push(memberScope);
-      } else if (node.type === 'MethodDefinition') {
-        skipEnter.set(node.key, 'deep');
-
-        if (node.kind === 'constructor') skipEnter.set(node.value, 'shallow');
+        if (node.type === 'MethodDefinition' && node.kind === 'constructor')
+          skipEnter.set(node.value, 'shallow');
 
         const memberScope = new Scope(node, true, scope);
         scopes.push(memberScope);
@@ -214,8 +193,6 @@ export function transform(
         node.type === 'WhileStatement'
       ) {
         scopes.push(new Scope(node, false, scope));
-      } else if (node.type === 'Property') {
-        skipEnter.set(node.key, 'deep');
       } else if (node.type === 'VariableDeclaration') {
         for (const declarator of node.declarations) {
           skipEnter.set(declarator.id, 'deep');
@@ -243,32 +220,15 @@ export function transform(
       function popScope() {
         if (!scope.parent) return;
         const blockScope = scopes.pop()!;
-
+        const [references, unused] = blockScope.close();
         const parentScope = blockScope.parent!;
-        // scopes[scopes.length - 1]!;
-        // for (const ref of blockScope.trappedReferences()) {
-        //   parentScope.references.push({ local: false, id: ref });
-        // }
 
-        for (const ref of blockScope.references) {
-          if (ref instanceof Reference) {
-            if (blockScope.declarations.has(ref.id.name)) {
-              const decl = blockScope.declarations.get(ref.id.name)!;
-              blockScope.unused.delete(decl);
-            } else {
-              parentScope.references.push(ref);
-            }
-          } else if (!blockScope.thisable) {
-            parentScope.references.push(ref);
-          }
+        for (const ref of references) {
+          parentScope.references.push(ref);
         }
 
-        for (const cl of blockScope.tasks) {
-          if (!blockScope.unused.has(cl.node)) parentScope.tasks.push(cl);
-        }
-
-        for (const u of blockScope.unused) {
-          magicString.remove(u.start, u.end);
+        for (const u of unused) {
+          parentScope.unused.add(u);
         }
       }
 
@@ -316,6 +276,8 @@ export function transform(
         node.type === 'ArrowFunctionExpression' ||
         node.type === 'ClassExpression'
       ) {
+        const alias = __id(code, node, exportIndex);
+
         if (parent.type !== 'MethodDefinition' || parent.kind === 'method') {
           scope.parent!.tasks.push({
             type: TransformTaskType.ExportFuncExpression,
@@ -323,6 +285,7 @@ export function transform(
             node,
             isRoot,
             scope,
+            alias,
           });
         }
       }
@@ -332,6 +295,7 @@ export function transform(
       }
     },
   });
+
   let reflen = rootScope.references.length;
   while (reflen--) {
     const ref = rootScope.references[reflen];
@@ -343,48 +307,69 @@ export function transform(
     }
   }
 
-  let tasks: TransformTask[] = [];
-  if (opts.resume) {
-    const entryDecl = rootScope.declarations.get(opts.resume);
-    if (entryDecl) {
-      for (const task of rootScope.tasks) {
-        if (rootScope.unused.has(task.node)) {
-          // REMOVE unused scope
-          const scope = task.scope;
-          if (task.node.type === 'FunctionDeclaration') {
-            if (task.parent.type === 'ExportNamedDeclaration') {
-              magicString.remove(task.parent.start, task.node.start);
-            }
+  const rootAliases = rootScope.paramsAndArgs();
 
-            stripNode(task.node, magicString);
-          }
+  let references: Scope['references'] = [];
+  if (!opts.ssr) {
+    const closeResult = rootScope.close();
+    references = closeResult[0];
 
-          task.scope.references.length = 0;
-        } else {
-          tasks.push(task);
+    for (const node of closeResult[1]) {
+      if (node.type === 'FunctionDeclaration') {
+        stripNode(node, magicString);
+      }
+    }
+
+    for (const node of ast.body) {
+      if (node.type === 'ExportNamedDeclaration') {
+        const decl = node.declaration!;
+        if (rootScope.unused.has(decl)) {
+          magicString.remove(node.start, decl.start);
         }
       }
     }
   } else {
-    tasks = rootScope.tasks;
+    references = rootScope.references;
   }
+  updateReferences(references, magicString, rootAliases);
 
-  for (const task of tasks) {
-    if (task.type === TransformTaskType.ExportFuncDeclaration) {
-      const [params, args] = task.scope.paramsAndArgs();
-      exportFuncClosure(magicString, exportIndex, task, args);
+  const stack = [[rootScope, opts.ssr ?? true] as const];
+  while (stack.length) {
+    const [scope, parentUsed] = stack.pop()!;
+    updateTaskReference(magicString, scope);
 
-      const funcAlias =
-        params.length > 0
-          ? `${task.alias}(${[...params].join(',')})`
-          : task.alias;
+    for (const child of scope.children) {
+      const childUsed =
+        child.owner.type === 'FunctionDeclaration'
+          ? !rootScope.unused.has(child.owner)
+          : parentUsed;
+      stack.push([child, opts.ssr || childUsed]);
+    }
 
-      task.scope.parent!.updateReferences(magicString, task.id, funcAlias);
+    for (const task of scope.tasks) {
+      if (!opts.ssr && scope.unused.has(task.node)) continue;
 
-      for (let i = 0; i < params.length; i++) {
-        task.scope.updateReferences(magicString, args[i], params[i]);
+      if (parentUsed) {
+        updateScopeTaskReference(magicString, task);
       }
-    } else exportFuncExpression(magicString, exportIndex, task);
+
+      const [args, params] = updateScopeReferences(magicString, task.scope);
+
+      // updateReferences(task.scope.references, magicString, aliases);
+      // task.scope.updateReferences(magicString, aliases);
+
+      if (task.type === TransformTaskType.ExportFuncDeclaration) {
+        // const params = args.map((a) => aliases[a]);
+        exportFuncClosure(magicString, exportIndex, task, args);
+
+        // const funcAlias =
+        //   params.length > 0 ? `${task.alias}(${params.join(',')})` : task.alias;
+
+        // task.scope.parent!.updateReferences(magicString, {
+        //   [task.id]: funcAlias,
+        // });
+      } else exportFuncExpression(magicString, exportIndex, task);
+    }
   }
 
   if (opts.includeHelper === undefined || opts.includeHelper === true) {
@@ -411,9 +396,13 @@ function __id(
     bits[u] = (Math.abs(c - 97) % (122 - 97)) + 97;
   }
 
-  const retval = String.fromCharCode(...bits);
+  const retval = baseName + String.fromCharCode(...bits);
 
-  return baseName + retval;
+  if (retval === 'dwgclbkorq') {
+    debugger;
+  }
+
+  return retval;
 }
 
 function throwNever(message: string, type: never) {
@@ -444,14 +433,39 @@ class Scope {
   public readonly tasks: TransformTask[] = [];
   public readonly dependents: [TypedNode, TypedNode][] = [];
   public readonly unused = new Set<TypedNode>();
+  public readonly children: Scope[] = [];
 
   constructor(
     public owner: TypedNode,
     public thisable: boolean,
     public parent?: Scope
-  ) {}
+  ) {
+    if (parent) {
+      parent.children.push(this);
+    }
+  }
 
-  addReference(id: Reference | ThisExpression) {
+  close() {
+    const blockScope = this;
+    const references: Scope['references'] = [];
+
+    for (const ref of blockScope.references) {
+      if (ref instanceof Reference) {
+        if (blockScope.declarations.has(ref.id.name)) {
+          const decl = blockScope.declarations.get(ref.id.name)!;
+          blockScope.unused.delete(decl);
+        } else {
+          references.push(ref);
+        }
+      } else if (!blockScope.thisable) {
+        references.push(ref);
+      }
+    }
+
+    return [references, blockScope.unused] as const;
+  }
+
+  addReference(id: this['references'][number]) {
     this.references.push(id);
   }
 
@@ -463,7 +477,7 @@ class Scope {
     return scope;
   }
 
-  resolve(ref: Reference | ThisExpression) {
+  resolve(ref: this['references'][number]) {
     let scope: Scope | undefined = this;
     while (scope) {
       if (ref instanceof Reference) {
@@ -482,8 +496,7 @@ class Scope {
 
   paramsAndArgs() {
     const scope = this;
-    const params = new Set<string>();
-    const args = new Set<string>();
+    const aliases: Record<string, string> = {};
     for (const ref of scope.references) {
       const refScope = this.resolve(ref);
       if (refScope !== null && refScope != scope && !refScope.isRoot) {
@@ -493,24 +506,16 @@ class Scope {
           const refName = ref.id.name;
           const decl = refScope.declarations.get(refName)!;
           if (refScope.tasks.every((t) => t.node !== decl)) {
-            args.add(refName);
-            params.add(refName);
+            aliases[refName] = refName;
           }
         } else {
           const replacement = `this_${refScope.owner.start}`;
-          args.add('this');
-          params.add(replacement);
+          aliases['this'] = replacement;
         }
       }
     }
 
-    if (params.size !== args.size) throw Error('args.size !== params.size');
-
-    if (scope.parent) {
-      const [parentParams, parentArgs] = scope.parent.paramsAndArgs();
-    }
-
-    return [[...params], [...args]];
+    return aliases;
   }
 
   getTrapped(references: Identifier[]) {
@@ -549,21 +554,8 @@ class Scope {
     return false;
   }
 
-  updateReferences(
-    magicString: MagicString,
-    searchName: string,
-    replacement: string
-  ) {
-    if (searchName !== replacement)
-      for (const ref of this.references) {
-        if (ref instanceof Reference) {
-          if (searchName === ref.id.name) {
-            magicString.overwrite(ref.id.start, ref.id.end, `(${replacement})`);
-          }
-        } else if (searchName === 'this') {
-          magicString.overwrite(ref.start, ref.end, `(${replacement})`);
-        }
-      }
+  updateReferences(magicString: MagicString, aliases: Record<string, string>) {
+    updateReferences(this.references, magicString, aliases);
   }
 }
 
@@ -633,6 +625,7 @@ interface ExportFuncExpression {
   node: FunctionExpression | ArrowFunctionExpression | ClassExpression;
   scope: Scope;
   isRoot: boolean;
+  alias: string;
 }
 
 function exportFuncExpression(
@@ -640,7 +633,7 @@ function exportFuncExpression(
   exportIndex: number,
   task: ExportFuncExpression
 ) {
-  const { parent, node, scope, isRoot } = task;
+  const { parent, node, scope, isRoot, alias } = task;
   if (
     (parent.type === 'Property' && parent.method && parent.kind === 'init') ||
     parent.type === 'MethodDefinition'
@@ -650,37 +643,16 @@ function exportFuncExpression(
       node.type === 'FunctionExpression'
     ) {
       if (node.async) {
-        magicString.remove(parent.start, parent.key.start);
+        // magicString.remove(parent.start, parent.key.start);
         magicString.prependRight(node.start, 'async function ');
       } else magicString.prependRight(node.start, 'function ');
     }
 
-    const [params, args] = scope.paramsAndArgs();
+    const aliases = scope.paramsAndArgs();
 
-    for (let i = 0; i < params.length; i++) {
-      scope.updateReferences(magicString, args[i], params[i]);
-    }
+    const args = Object.keys(aliases);
+    const params = args.map((x) => aliases[x]);
 
-    // const trappedReferences = scope.trappedReferences();
-    // const params: string[] = uniqueParams(trappedReferences);
-
-    // const args = new Set<string>();
-    // for (const ref of trappedReferences) {
-    //   // use magic to get alias of ref
-    //   const refName = magicString.slice(ref.start, ref.end);
-    //   args.add(refName);
-    //   // const replacement = scope.substitute(ref.name);
-    //   // if (replacement) {
-    //   //   replacement.nodes.push(ref);
-    //   //   args.add(replacement.content);
-    //   // } else {
-    //   //   args.add(ref.name);
-    //   // }
-    // }
-
-    // const args = funcScope.getTrapped(references);
-
-    const alias = __id(magicString.original, node, exportIndex);
     exportFuncClosure(
       magicString,
       exportIndex,
@@ -693,28 +665,27 @@ function exportFuncExpression(
       params
     );
     // const [id, args] = exportFunction(node, funcScope);
-    if (parent.type === 'MethodDefinition')
-      magicString.appendLeft(node.start, ' = ' + alias);
-    else magicString.appendLeft(node.start, ' : ' + alias);
-    if (args.length > 0) {
-      magicString.appendLeft(node.start, `(${args.join(',')})`);
-    }
+
+    // if (args.length > 0) {
+    //   magicString.appendLeft(node.start, `(${args.join(',')})`);
+    // }
   } else if (!isRoot) {
     //   //       const funcNode = node as any as acorn.Node;
-    const [params, args] = scope.paramsAndArgs();
-    for (let i = 0; i < params.length; i++) {
-      scope.updateReferences(magicString, args[i], params[i]);
-    }
+    const aliases = scope.paramsAndArgs();
 
     const id = __id(magicString.original, node, exportIndex);
     // subsctitute expression reference
-    magicString.appendLeft(node.start, `${id}`);
+    // magicString.appendLeft(node.start, `${id}`);
 
     magicString.appendRight(node.start, `export const ${id} = `);
-    if (params.length > 0) {
-      magicString.appendLeft(node.start, `(${[...args].join(',')})`);
-      magicString.appendRight(node.start, `(${[...params].join(',')}) => `);
-      magicString.appendLeft(node.end, `, [${[...params].join(',')}]`);
+
+    const args = Object.keys(aliases);
+    const params = args.map((x) => aliases[x]);
+
+    if (args.length > 0) {
+      // magicString.appendLeft(node.start, `(${args.join(',')})`);
+      magicString.appendRight(node.start, `(${params.join(',')}) => `);
+      magicString.appendLeft(node.end, `, [${params.join(',')}]`);
     }
     // export definition
     magicString.appendRight(node.start, `__closure("${id}", `);
@@ -727,7 +698,7 @@ function exportFuncClosure(
   magicString: MagicString,
   exportIndex: number,
   closure: Pick<ExportFuncDeclaration, 'isRoot' | 'parent' | 'alias' | 'node'>,
-  params: string[]
+  params: readonly string[]
 ) {
   const { isRoot, parent, alias, node } = closure;
 
@@ -767,6 +738,7 @@ function exportFuncClosure(
     magicString.move(node.start, node.end, exportIndex);
   }
 }
+
 function stripNode(root: FunctionDeclaration, magicString: MagicString) {
   let start = root.start;
 
@@ -788,4 +760,108 @@ function stripNode(root: FunctionDeclaration, magicString: MagicString) {
   });
 
   magicString.remove(start, root.end);
+}
+
+function updateTaskReference(magicString: MagicString, scope: Scope) {
+  const aliases: Record<string, string> = {};
+  for (const ref of scope.references) {
+    const refScope = scope.resolve(ref);
+    if (refScope !== null && refScope != scope && !refScope.isRoot) {
+      // use magic to get alias of ref
+      // const refName = magicString.slice(ref.start, ref.end);
+      if (ref instanceof Reference) {
+        const refName = ref.id.name;
+        const decl = refScope.declarations.get(refName)!;
+        if (refScope.tasks.every((t) => t.node !== decl)) {
+          aliases[refName] = refName;
+        }
+      } else {
+        const replacement = `this_${refScope.owner.start}`;
+        aliases['this'] = replacement;
+      }
+    }
+  }
+}
+
+function updateScopeTaskReference(
+  magicString: MagicString,
+  task: TransformTask
+) {
+  const aliases = task.scope.paramsAndArgs();
+  const args = Object.keys(aliases);
+
+  let funcAlias =
+    args.length > 0 ? `(${task.alias}(${args.join(',')}))` : task.alias;
+
+  if (task.type === TransformTaskType.ExportFuncExpression) {
+    const { parent } = task;
+
+    switch (parent.type) {
+      case 'MethodDefinition':
+        magicString.remove(parent.start, parent.key.start);
+        magicString.appendLeft(parent.key.end, ' = ' + funcAlias);
+        break;
+      case 'Property':
+        magicString.remove(parent.start, parent.key.start);
+        magicString.appendLeft(parent.key.end, ' : ' + funcAlias);
+        break;
+      default:
+        magicString.appendLeft(task.node.start, funcAlias);
+        break;
+    }
+  }
+}
+
+function updateScopeReferences(magicString: MagicString, scope: Scope) {
+  const args = new Set<string>();
+  const params = new Set<string>();
+  for (const ref of scope.references) {
+    const refScope = scope.resolve(ref);
+    if (refScope !== null && !refScope.isRoot) {
+      // use magic to get alias of ref
+      // const refName = magicString.slice(ref.start, ref.end);
+      if (ref instanceof Reference) {
+        const refName = ref.id.name;
+        const decl = refScope.declarations.get(refName)!;
+        const declTask = refScope.tasks.find((t) => t.node === decl);
+        if (!declTask) {
+          if (scope !== refScope) {
+            args.add(refName);
+            params.add(refName);
+          }
+        } else {
+          const args = Object.keys(declTask.scope.paramsAndArgs());
+          let declAlias =
+            args.length > 0
+              ? `(${declTask.alias}(${args.join(',')}))`
+              : declTask.alias;
+
+          magicString.overwrite(ref.id.start, ref.id.end, `(${declAlias})`);
+        }
+      } else if (scope !== refScope) {
+        const replacement = `this_${refScope.owner.start}`;
+        magicString.overwrite(ref.start, ref.end, `(${replacement})`);
+      }
+    }
+  }
+
+  return [[...args], [...params]] as const;
+}
+
+function updateReferences(
+  references: Scope['references'],
+  magicString: MagicString,
+  aliases: Record<string, string>
+) {
+  for (const ref of references) {
+    if (ref instanceof Reference) {
+      const alias = aliases[ref.id.name];
+      if (alias) {
+        magicString.overwrite(ref.id.start, ref.id.end, `(${alias})`);
+      }
+    } else if (ref.type === 'ThisExpression') {
+      const alias = aliases['this'];
+      if (alias) magicString.overwrite(ref.start, ref.end, `(${alias})`);
+    }
+  }
 }

@@ -8,8 +8,9 @@ export function assertTransform(
   options?: TransfromOptions
 ) {
   let transformedCode = transform(code, {
-    ...options,
     includeHelper: false,
+    ssr: true,
+    ...options,
   })!.code;
 
   const actualCode = format(transformedCode);
@@ -32,8 +33,12 @@ export function assertTransform(
         parser: 'babel',
       });
     } catch (err) {
-      console.error(err);
-      return code;
+      console.error(
+        '\n################################\n' +
+          code +
+          '\n################################\n'
+      );
+      throw err;
     }
   }
 }
