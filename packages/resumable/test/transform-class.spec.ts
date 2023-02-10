@@ -239,4 +239,74 @@ describe('transform classes', () => {
 
     assertTransform(code, expected);
   });
+
+  it('async method definition', () => {
+    const code = `
+        export class App {
+          async method () {
+          }
+        }
+      `;
+    const expected = `
+      export const nofovriccc = __closure("nofovriccc", async function () {});
+      export class App {
+        method = nofovriccc;
+      }
+      __closure("App", App);
+    
+  
+    `;
+    assertTransform(code, expected);
+  });
+
+  it('static method definition', () => {
+    const code = `
+        export class App {
+          static method () {
+          }
+        }
+      `;
+    const expected = `
+      export const mlepswnddd = __closure("mlepswnddd", function () {});
+      export class App {
+        static method = mlepswnddd;
+      }
+      __closure("App", App);
+    `;
+    assertTransform(code, expected);
+  });
+
+  it('static property definition', () => {
+    const code = `
+        export class App {
+          static prop = function () {
+          }
+        }
+      `;
+    const expected = `
+      export const dgigrduvem = __closure("dgigrduvem", function () {});
+      export class App {
+        static prop = dgigrduvem;
+      }
+      __closure("App", App);
+    `;
+    assertTransform(code, expected);
+  });
+
+  it('object property', () => {
+    const code = `
+        export const App = {
+          async prop() {
+          }
+        }
+      `;
+    const expected = `
+      export const ongnuqhbbb = __closure("ongnuqhbbb", async function () {});
+      export const App = {
+        prop: ongnuqhbbb,
+      };
+    
+    `;
+    assertTransform(code, expected);
+  });
 });

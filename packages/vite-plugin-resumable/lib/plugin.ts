@@ -125,7 +125,7 @@ export function resumable(xn?: Options): Plugin {
         try {
           if (/\.resume\.[tj]sx?$/.test(id)) {
             return transform(code, {
-              ssr: true,
+              ssr: options?.ssr ?? true,
             });
           }
         } catch {

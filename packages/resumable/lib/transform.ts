@@ -77,12 +77,15 @@ export function transform(
 
   const rootScope = new Scope(ast, false);
   const scopes = [rootScope];
-
   const magicString = new MagicString(code);
+
+  for (const root of ast.body) {
+    const exportIndex = root.start;
+  }
   const exportIndex =
     ast.body.find((n) => n.type !== 'ImportDeclaration')?.start ?? 0;
 
-  magicString.prependLeft(exportIndex, ';');
+  // magicString.prependLeft(exportIndex, ';');
 
   const skipEnter = new Map<TypedNode, 'deep' | 'shallow'>();
 
@@ -92,12 +95,12 @@ export function transform(
       const parent = (p || ast) as TypedNode;
       let scope = scopes[scopes.length - 1]!;
 
-      if (
-        parent.type === 'ExportNamedDeclaration' ||
-        parent.type === 'ExportDefaultDeclaration'
-      ) {
-        scope.dependents.push([node, parent]);
-      }
+      // if (
+      //   parent.type === 'ExportNamedDeclaration' ||
+      //   parent.type === 'ExportDefaultDeclaration'
+      // ) {
+      //   scope.dependents.push([node, parent]);
+      // }
 
       if (skipEnter.has(node)) {
         const mode = skipEnter.get(node);
@@ -140,6 +143,8 @@ export function transform(
         scopes.push(classScope);
 
         if (node.id) {
+          scope.unused.add(node);
+
           skipEnter.set(node.id, 'deep');
           scope.declarations.set(node.id.name, node);
         }
@@ -310,12 +315,14 @@ export function transform(
   const rootAliases = rootScope.paramsAndArgs();
 
   let references: Scope['references'] = [];
+  const closeResult = rootScope.close();
   if (!opts.ssr) {
-    const closeResult = rootScope.close();
     references = closeResult[0];
 
     for (const node of closeResult[1]) {
       if (node.type === 'FunctionDeclaration') {
+        stripNode(node, magicString);
+      } else if (node.type === 'ClassDeclaration') {
         stripNode(node, magicString);
       }
     }
@@ -333,17 +340,17 @@ export function transform(
   }
   updateReferences(references, magicString, rootAliases);
 
-  const stack = [[rootScope, opts.ssr ?? true] as const];
+  const ssr = opts.ssr ?? true;
+  const stack = [[rootScope, ssr] as const];
   while (stack.length) {
     const [scope, parentUsed] = stack.pop()!;
     updateTaskReference(magicString, scope);
 
     for (const child of scope.children) {
-      const childUsed =
-        child.owner.type === 'FunctionDeclaration'
-          ? !rootScope.unused.has(child.owner)
-          : parentUsed;
-      stack.push([child, opts.ssr || childUsed]);
+      stack.push([
+        child,
+        ssr || (parentUsed && !rootScope.unused.has(child.owner)),
+      ]);
     }
 
     for (const task of scope.tasks) {
@@ -397,10 +404,6 @@ function __id(
   }
 
   const retval = baseName + String.fromCharCode(...bits);
-
-  if (retval === 'dwgclbkorq') {
-    debugger;
-  }
 
   return retval;
 }
@@ -739,7 +742,10 @@ function exportFuncClosure(
   }
 }
 
-function stripNode(root: FunctionDeclaration, magicString: MagicString) {
+function stripNode(
+  root: FunctionDeclaration | ClassDeclaration,
+  magicString: MagicString
+) {
   let start = root.start;
 
   walk(root.body, {
@@ -798,12 +804,20 @@ function updateScopeTaskReference(
 
     switch (parent.type) {
       case 'MethodDefinition':
-        magicString.remove(parent.start, parent.key.start);
+        if (parent.static) {
+          magicString.overwrite(parent.start, parent.key.start, 'static ');
+        } else {
+          magicString.remove(parent.start, parent.key.start);
+        }
         magicString.appendLeft(parent.key.end, ' = ' + funcAlias);
         break;
       case 'Property':
-        magicString.remove(parent.start, parent.key.start);
-        magicString.appendLeft(parent.key.end, ' : ' + funcAlias);
+        if (parent.method) {
+          magicString.remove(parent.start, parent.key.start);
+          magicString.appendLeft(task.node.start, ' : ' + funcAlias);
+        } else {
+          magicString.appendLeft(task.node.start, funcAlias);
+        }
         break;
       default:
         magicString.appendLeft(task.node.start, funcAlias);
