@@ -55,15 +55,17 @@ interface NewTodoProps {
 
 function NewTodo(props: NewTodoProps) {
   const newTodoText = new Lazy("");
-  function onNewTodoKeyUp(e: EventContext<TodoItem, KeyboardEvent>) {
-    const label = (e.event.target as any).value;
+  function onNewTodoKeyUp(
+    e: EventContext<TodoItem, KeyboardEvent, HTMLInputElement>
+  ) {
+    const label = e.event.target.value;
     if (e.event.key === "Enter" && label) {
       const newItem: TodoItem = {
         label,
         completed: false
       };
       props.onNew(newItem);
-      newTodoText.select(e.data);
+      newTodoText.select(e.event);
     }
   }
   return (
@@ -114,11 +116,11 @@ function TodoFooter(props: TodoListProps) {
         </li>
         <span> </span>
         <li>
-          <a click={(_) => props.items.filter(active)}>Active</a>
+          <a click={() => props.items.filter(active)}>Active</a>
         </li>
         <span> </span>
         <li>
-          <a click={(_) => props.items.filter(completed)}>Completed</a>
+          <a click={() => props.items.filter(completed)}>Completed</a>
         </li>
       </ul>
     </footer>
@@ -129,12 +131,12 @@ function TodoList() {
   const row = useContext<TodoItem>();
   const editing = row.lazy("editing");
 
-  function select(e: EventContext<TodoItem, Event>) {
+  function select(e: EventContext<TodoItem>) {
     editing.select(e.data);
   }
-  function setCompleted(e: EventContext<TodoItem, Event>) {
+  function setCompleted(e: EventContext<TodoItem, Event, HTMLInputElement>) {
     const data = e.data;
-    data.completed = (e.event.target as any).checked;
+    data.completed = e.event.target.checked;
     items.update(() => [data]);
   }
 
@@ -168,9 +170,9 @@ function TodoList() {
                 // evnt.node.value = evnt.data.get("label");
                 editing.clear();
               }}
-              keyup={(evnt: EventContext<TodoItem, KeyboardEvent>) => {
+              keyup={(evnt) => {
                 if (evnt.event.key === "Enter") {
-                  const target = evnt.event.target as HTMLInputElement;
+                  const target = evnt.event.target;
                   evnt.data.label = target.value;
                   items.update(() => [evnt.data]);
                   editing.clear();
