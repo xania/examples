@@ -1,6 +1,4 @@
-﻿export const resumable = false;
-
-export async function hydrate(obj: any, hydrationRoot: Node) {
+﻿export async function hydrate(obj: any, hydrationRoot: Node) {
   const result: { root?: any } = {};
 
   const stack = [[result as any, 'root' as string, obj] as const];
