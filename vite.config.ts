@@ -10,9 +10,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "~": path.resolve(__dirname),
-      "@xania/view": path.resolve(__dirname, "packages/view/lib/index.ts"),
-      "@xania/state": path.resolve(__dirname, "packages/state/lib/index.ts"),
-      "@xania/resumable": path.resolve(__dirname, "packages/resumable")
+      "@xania/view": path.resolve(__dirname, "./packages/view/lib/index.ts"),
+      "@xania/state": path.resolve(__dirname, "./packages/state/lib/index.ts"),
+      "@xania/resumable": path.resolve(__dirname, "./packages/resumable")
     }
   },
   server: {

@@ -1,4 +1,4 @@
-﻿import { Anchor, jsx, render } from "@xania/view";
+﻿import { Anchor, jsx, render } from "../packages/view/index";
 import "./index.css";
 // import "../src/App.module.scss";
 

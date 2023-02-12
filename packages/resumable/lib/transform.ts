@@ -27,7 +27,7 @@ import {
 } from 'estree';
 import MagicString from 'magic-string';
 import { walk } from 'estree-walker';
-
+import { variableFromPatterns } from './ast/var-from-patterns';
 declare module 'estree' {
   export interface BaseNode {
     start: number;
@@ -69,7 +69,7 @@ export type TransfromOptions = {
 export function transform(
   code: string,
   opts: TransfromOptions
-): { code: string; map: any } | undefined {
+): { code: string; map: any; closures: Closure[] } | undefined {
   const ast = acorn.parse(code, {
     sourceType: 'module',
     ecmaVersion: 'latest',
@@ -113,27 +113,20 @@ export function transform(
         node.type === 'ImportDeclaration' ||
         node.type === 'ExportAllDeclaration'
       ) {
-        // if (CSS_LANGS_RE.test(node.source.value as string)) {
-        //   // magicString.remove(node.start, node.end);
-        //   this.skip();
-        // } else {
-        //   const source = node.source.raw;
-        //   if (source) {
-        //     const match = source.match(/\.[jt]sx?/);
-        //     if (match) {
-        //       magicString.appendLeft(
-        //         node.source.start + (match.index || 0),
-        //         '.resume'
-        //       );
-        //     } else {
-        //       console.error(source);
-        //     }
-        //   }
-        // }
-        // } else {
-        //   magicString.remove(node.start, node.end);
-        //   this.skip();
-        // }
+        if (CSS_LANGS_RE.test(node.source.value as string)) {
+          // magicString.remove(node.start, node.end);
+          this.skip();
+        } else {
+          const source = node.source.raw;
+          if (source) {
+            const match = source.match(/\.[jt]sx?/);
+            if (match) {
+              magicString.appendRight(node.source.start + 1, '/@resumable');
+            } else {
+              console.error(source);
+            }
+          }
+        }
       } else if (
         node.type === 'ClassDeclaration' ||
         node.type === 'ClassExpression'
@@ -175,7 +168,7 @@ export function transform(
           scope
         );
         for (const [v, n] of variableFromPatterns(node.params)) {
-          funcScope.declarations.set(v, n);
+          funcScope.declarations.set(v, n as TypedNode);
         }
         scopes.push(funcScope);
 
@@ -202,7 +195,7 @@ export function transform(
         for (const declarator of node.declarations) {
           skipEnter.set(declarator.id, 'deep');
           for (const [v, n] of variableFromPatterns([declarator.id])) {
-            scope.declarations.set(v, n);
+            scope.declarations.set(v, n as TypedNode);
           }
         }
       } else if (node.type === 'Identifier') {
@@ -253,6 +246,7 @@ export function transform(
             parent,
             node,
             alias: id,
+            params: [],
             id,
           });
         } else {
@@ -274,6 +268,7 @@ export function transform(
             node,
             parent,
             id: node.id!.name,
+            params: [],
           });
         }
       } else if (
@@ -291,6 +286,7 @@ export function transform(
             isRoot,
             scope,
             alias,
+            params: [],
           });
         }
       }
@@ -341,6 +337,7 @@ export function transform(
 
   // const ssr = opts.ssr ?? true;
   const stack = [rootScope];
+  const tasks: TransformTask[] = [];
   while (stack.length) {
     const scope = stack.pop()!;
     updateTaskReference(magicString, scope);
@@ -350,6 +347,7 @@ export function transform(
     }
 
     for (const task of scope.tasks) {
+      tasks.push(task);
       // if (!opts.ssr && scope.unused.has(task.node)) continue;
 
       // if (parentUsed) {
@@ -357,6 +355,9 @@ export function transform(
       // }
 
       const [args, params] = updateScopeReferences(magicString, task.scope);
+
+      task.params.length = 0;
+      for (const p of params) task.params.push(p);
 
       // updateReferences(task.scope.references, magicString, aliases);
       // task.scope.updateReferences(magicString, aliases);
@@ -379,7 +380,18 @@ export function transform(
     magicString.append(CLOSURE_HELPER);
   }
 
-  return { code: magicString.toString(), map: magicString.generateMap() };
+  const closures = tasks.map((t) => new Closure(t.alias, clientScript(t)));
+
+  function clientScript(t: TransformTask) {
+    const body = magicString.original.slice(t.node.start, t.node.end);
+    return `export const ${t.alias} = ` + body;
+  }
+
+  return {
+    code: magicString.toString(),
+    map: magicString.generateMap(),
+    closures,
+  };
 }
 
 function __id(
@@ -413,13 +425,13 @@ type Replacement = {
   task?: ExportFuncDeclaration;
 };
 
-export type Closure = {
-  isRoot: boolean;
-  parent: TypedNode;
-  node: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression;
-  args?: string[];
-  id: string;
-};
+// export type Closure = {
+//   isRoot: boolean;
+//   parent: TypedNode;
+//   node: FunctionDeclaration | FunctionExpression | ArrowFunctionExpression;
+//   args?: string[];
+//   id: string;
+// };
 
 class Reference {
   constructor(public id: Identifier, public scope: Scope) {}
@@ -559,43 +571,6 @@ class Scope {
   }
 }
 
-function variableFromPatterns(patterns: Pattern[]) {
-  const vars: [string, TypedNode][] = [];
-  const stack: Pattern[] = [...patterns];
-  while (stack.length) {
-    const pat = stack.pop()!;
-
-    if (pat.type === 'Identifier') {
-      vars.push([pat.name!, pat]);
-    } else if (pat.type === 'ObjectPattern') {
-      for (const p of pat.properties) {
-        if (p.type === 'Property') {
-          if (p.key.type === 'Identifier') {
-            vars.push([p.key.name, p]);
-          } else {
-            debugger;
-          }
-        } else if (p.type === 'RestElement') {
-          stack.push(p.argument);
-        }
-      }
-    } else if (pat.type === 'ArrayPattern') {
-      for (const elt of pat.elements) {
-        if (elt) {
-          stack.push(elt);
-        }
-      }
-    } else if (pat.type === 'AssignmentPattern') {
-      stack.push(pat.left);
-    } else if (pat.type === 'RestElement') {
-      stack.push(pat.argument);
-    } else {
-      debugger;
-    }
-  }
-  return vars;
-}
-
 enum TransformTaskType {
   ExportFuncDeclaration,
   ExportFuncExpression,
@@ -616,6 +591,7 @@ interface ExportFuncDeclaration {
   // args?: string[];
   isRoot: boolean;
   alias: string;
+  params: string[];
   id: string;
 }
 
@@ -626,6 +602,7 @@ interface ExportFuncExpression {
   scope: Scope;
   isRoot: boolean;
   alias: string;
+  params: string[];
 }
 
 function exportFuncExpression(
@@ -874,4 +851,8 @@ function updateReferences(
       if (alias) magicString.overwrite(ref.start, ref.end, `(${alias})`);
     }
   }
+}
+
+class Closure {
+  constructor(public readonly name: string, public readonly code: string) {}
 }

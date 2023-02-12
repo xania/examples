@@ -46,5 +46,8 @@
     "tslib": "^2.4.1",
     "typescript": "^4.9.4",
     "@xania/resumable": "../resumable"
+  },
+  "dependencies": {
+    "@ampproject/remapping": "^2.2.0"
   }
 }

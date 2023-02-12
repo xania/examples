@@ -121,14 +121,13 @@ function importDesc(value: any, importMap: ImportMap) {
   };
 
   if (!__src || !__name) {
-    console.error('value has not import dscription', value);
+    console.error('value has no import description', value);
     return null;
   }
 
-  const prefix = 'file:///C:/dev/xania-examples';
-  const url = __src.startsWith(prefix) ? __src.slice(prefix.length) : __src;
+  // const __ldr = importMap.add(`/closures/${__name}.js`);
 
-  const __ldr = importMap.add(url);
+  const __ldr = importMap.add(__src);
 
   if (!__src || !__name) {
     console.error('import descriptor of value is missing', value.toString());

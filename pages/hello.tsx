@@ -1,6 +1,7 @@
-﻿import { jsx } from "@xania/view";
+﻿import { jsx } from "../packages/view/index";
 import { State } from "../packages/state";
 import { Layout } from "./Layout";
+// // import { Layout } from "./Layout";
 
 // class State {
 //   observers: any[] = [];
@@ -30,7 +31,7 @@ import { Layout } from "./Layout";
 // }
 
 export function view() {
-  const state = new State(10);
+  const state = new State(11);
 
   function onClick() {
     state.set((x) => x + 1);

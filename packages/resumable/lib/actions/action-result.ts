@@ -3,11 +3,7 @@
 export type IActionHandler = () => IActionResult;
 
 export interface IActionResult {
-  execute(
-    req: http.IncomingMessage,
-    res: http.OutgoingMessage,
-    next: Function
-  ): Promise<void> | void;
+  execute(root: string, res: http.OutgoingMessage): Promise<void> | void;
 }
 
 export class Literal {
