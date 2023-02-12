@@ -215,6 +215,13 @@ export function createLoader(server: ViteDevServer) {
       code: resumeResult.code,
       file: filename,
       map: _getCombinedSourcemap(filename, sourcemapChain),
+      genSourceMap() {
+        const { map } = this;
+        return (
+          `\n//# sourceURL=${filename}\n//# sourceMappingURL=` +
+          genSourceMapUrl(map)
+        );
+      },
     };
   }
 

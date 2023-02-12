@@ -85,6 +85,8 @@ export function resumable(xn?: Options): Plugin {
           if (result) {
             res.setHeader('Content-Type', 'application/javascript');
             res.write(result.code);
+            res.write(result.genSourceMap());
+
             res.end();
             return;
           }
