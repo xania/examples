@@ -58,14 +58,14 @@ function NewTodo(props: NewTodoProps) {
   function onNewTodoKeyUp(
     e: EventContext<TodoItem, KeyboardEvent, HTMLInputElement>
   ) {
-    const label = e.event.target.value;
-    if (e.event.key === "Enter" && label) {
+    const label = e.currentTarget.value;
+    if (e.key === "Enter" && label) {
       const newItem: TodoItem = {
         label,
         completed: false
       };
       props.onNew(newItem);
-      newTodoText.select(e.event);
+      newTodoText.select(e.node);
     }
   }
   return (
@@ -136,7 +136,7 @@ function TodoList() {
   }
   function setCompleted(e: EventContext<TodoItem, Event, HTMLInputElement>) {
     const data = e.data;
-    data.completed = e.event.target.checked;
+    data.completed = e.currentTarget.checked;
     items.update(() => [data]);
   }
 
@@ -171,9 +171,8 @@ function TodoList() {
                 editing.clear();
               }}
               keyup={(evnt) => {
-                if (evnt.event.key === "Enter") {
-                  const target = evnt.event.target;
-                  evnt.data.label = target.value;
+                if (evnt.key === "Enter") {
+                  evnt.data.label = evnt.currentTarget.value;
                   items.update(() => [evnt.data]);
                   editing.clear();
                 } else if (evnt.event.key === "Escape") {
