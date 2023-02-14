@@ -47,7 +47,7 @@ describe('export declarations', () => {
     assertTransform(code, expected);
   });
 
-  it('flag default function###', () => {
+  it('flag default function', () => {
     const code = `
       export default function App() {
         return "Hello App";
@@ -57,7 +57,8 @@ describe('export declarations', () => {
       export const App$pswdilj = __$("App$pswdilj", function App() {
         return "Hello App";
       });
-      export default App$pswdilj;
+      const App = App$pswdilj;
+      export default App;
     `;
     assertTransform(code, expected);
   });
@@ -363,17 +364,17 @@ describe('export declarations', () => {
         __$(
           "App$lsbjykd",
           function App(value, ts = 1000) {
-            return new Promise($mgwbwxdhnh(ts, $weemnbmmcf));
+            return new Promise($mgwbwxdhnh(ts, $weemnbmmcf, value));
           },
           [$mgwbwxdhnh, $weemnbmmcf]
         );
-      export const $mgwbwxdhnh = (ts, $weemnbmmcf) =>
+      export const $mgwbwxdhnh = (ts, $weemnbmmcf, value) =>
         __$(
           "$mgwbwxdhnh",
           (resolve, reject) => {
             setTimeout($weemnbmmcf(resolve, value), ts);
           },
-          [ts, $weemnbmmcf]
+          [ts, $weemnbmmcf, value]
         );
       export const $weemnbmmcf = (resolve, value) =>
         __$(
@@ -389,7 +390,7 @@ describe('export declarations', () => {
     assertTransform(code, expected);
   });
 
-  it('local function reference  ####', () => {
+  it('local function reference', () => {
     const code = `
       export function App(a) {
         function handler() {
@@ -440,12 +441,13 @@ describe('export declarations', () => {
           [Compo$omooc]
         );
       export const Compo$omooc = __$("Compo$omooc", function Component() {});
-      export default App$fkfwtdi;
+      const App = App$fkfwtdi(Compo$omooc);
+      export default App;
     `;
     assertTransform(code, expected);
   });
 
-  it('closure over root variable declaration###', () => {
+  it('closure over root variable declaration', () => {
     const code = `
       const jsx = null;
       export default function App() {
@@ -457,13 +459,13 @@ describe('export declarations', () => {
 
     const expected = `
       const jsx = null;
-      export const App$juxkhef = (Compo$qluqm) =>
+      export const App$juxkhef = (Compo$qluqm, jsx) =>
         __$(
           "App$juxkhef",
           function App() {
             return Compo$qluqm(jsx);
           },
-          [Compo$qluqm]
+          [Compo$qluqm, jsx]
         );
       export const Compo$qluqm = (jsx) =>
         __$(
@@ -473,7 +475,8 @@ describe('export declarations', () => {
           },
           [jsx]
         );
-      export default App$juxkhef;
+      const App = App$juxkhef(Compo$qluqm, jsx);
+      export default App;
     `;
     assertTransform(code, expected);
   });

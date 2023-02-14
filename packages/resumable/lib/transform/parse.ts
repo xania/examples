@@ -97,7 +97,7 @@ export function parse(code: string, filter: (name: string) => boolean) {
           node.type !== 'ArrowFunctionExpression',
           scope
         );
-        for (const [v, n] of variableFromPatterns(node.params)) {
+        for (const [v, _] of variableFromPatterns(node.params)) {
           funcScope.declarations.set(v, v);
         }
         scopes.push(funcScope);
@@ -133,7 +133,7 @@ export function parse(code: string, filter: (name: string) => boolean) {
       } else if (node.type === 'VariableDeclaration') {
         for (const declarator of node.declarations) {
           skipEnter.set(declarator.id, 'deep');
-          for (const [v, n] of variableFromPatterns([declarator.id])) {
+          for (const [v, _] of variableFromPatterns([declarator.id])) {
             scope.declarations.set(v, v);
           }
         }
@@ -143,9 +143,9 @@ export function parse(code: string, filter: (name: string) => boolean) {
         scope.references.push(node);
       }
     },
-    leave(n, p) {
+    leave(n) {
       const node = n as ASTNode;
-      const parent = (p || ast) as ASTNode;
+      // const parent = (p || ast) as ASTNode;
       let scope = scopes[scopes.length - 1]!;
 
       // const isRoot =

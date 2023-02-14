@@ -1,5 +1,4 @@
 ﻿import MagicString from 'magic-string';
-import { ASTNode } from './ast-node';
 import { parse } from './parse';
 import { Closure, Scope } from './scope';
 
@@ -10,7 +9,7 @@ declare module 'estree' {
   }
 }
 
-export const CLOSURE_HELPER = `;function __closure(name, fn, args) { return Object.assign(fn, {__src: import.meta.url, __name: name, __args: args}) }`;
+export const CLOSURE_HELPER = `;function __$(name, fn, args) { return Object.assign(fn, {__src: import.meta.url, __name: name, __args: args}) }`;
 
 export type TransfromOptions = {
   // entry: string[];
@@ -32,7 +31,7 @@ export function transform(
 
     updateImports(magicString, scope);
 
-    for (const [name, cl] of scope.exports) {
+    for (const [_, cl] of scope.exports) {
       exportClosure(magicString, cl);
     }
   }
@@ -47,9 +46,9 @@ export function transform(
   };
 }
 
-function throwNever(message: string, type: never) {
-  throw Error(message + type);
-}
+// function throwNever(message: string, type: never) {
+//   throw Error(message + type);
+// }
 
 function updateImports(magicString: MagicString, scope: Scope) {
   for (const source of scope.imports) {
@@ -61,18 +60,6 @@ function updateImports(magicString: MagicString, scope: Scope) {
         console.error(source);
       }
     }
-  }
-}
-
-function formatArg(arg: string | Closure) {
-  if (arg instanceof Closure) {
-    if (arg.bindings.size) {
-      return `${arg.exportName}(${[...arg.bindings.keys()].join(', ')})`;
-    } else {
-      return arg.exportName;
-    }
-  } else {
-    return arg;
   }
 }
 
@@ -116,7 +103,7 @@ function exportClosure(magicString: MagicString, closure: Closure) {
   }
   magicString.appendLeft(owner.end, ');\n');
 
-  const refSubstitute = formatInit(closure.exportName, params);
+  const refSubstitute = formatInit(closure.exportName, args);
   for (const ref of closure.references) {
     if (ref.type === 'Identifier') {
       magicString.overwrite(ref.start, ref.end, refSubstitute);
@@ -141,7 +128,19 @@ function exportClosure(magicString: MagicString, closure: Closure) {
 
     magicString.appendLeft(owner.start, closureInitExpr);
   } else if (closure.parent.type === 'ExportDefaultDeclaration') {
-    magicString.appendLeft(owner.start, closure.exportName);
+    if (owner.type === 'FunctionDeclaration') {
+      if (owner.id) {
+        magicString.appendRight(
+          closure.parent.start,
+          `const ${owner.id.name} = ${closureInitExpr};\n`
+        );
+        magicString.appendLeft(owner.start, owner.id.name);
+      } else {
+        magicString.appendLeft(owner.start, closureInitExpr);
+      }
+    } else {
+      magicString.appendLeft(owner.start, closure.exportName);
+    }
   } else {
     if (closure.parent.type === 'MethodDefinition') {
       magicString.appendLeft(owner.start, ' = ');
