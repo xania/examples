@@ -116,7 +116,10 @@ function exportClosure(magicString: MagicString, closure: Closure) {
 
   // ============== FunctionDeclaration ================
 
-  if (closure.parent.type === 'BlockStatement') {
+  if (
+    closure.parent.type === 'BlockStatement' ||
+    closure.parent.type === 'Program'
+  ) {
     // skip initialize
   } else if (closure.parent.type === 'ExportNamedDeclaration') {
     if (
@@ -159,16 +162,19 @@ function exportClosure(magicString: MagicString, closure: Closure) {
         magicString.remove(parent.start, parent.key.start);
       }
     } else if (closure.parent.type === 'Property') {
-      magicString.appendLeft(owner.start, ' : ');
+      if (closure.parent.method) {
+        magicString.appendLeft(owner.start, ' : ');
 
-      const prefix = magicString.slice(
-        closure.parent.start,
-        closure.parent.key.start
-      );
+        const prefix = magicString.slice(
+          closure.parent.start,
+          closure.parent.key.start
+        );
 
-      magicString.remove(closure.parent.start, closure.parent.key.start);
+        magicString.remove(closure.parent.start, closure.parent.key.start);
 
-      magicString.appendRight(owner.start, prefix + 'function ');
+        magicString.appendRight(owner.start, prefix + 'function ');
+      } else {
+      }
     }
 
     // ============== Default ================
@@ -179,8 +185,7 @@ function exportClosure(magicString: MagicString, closure: Closure) {
       owner.type === 'ClassDeclaration' ||
       owner.type === 'ClassExpression'
     ) {
-      if (closure.parent.type !== 'Program')
-        magicString.appendLeft(owner.start, closureInitExpr);
+      magicString.appendLeft(owner.start, closureInitExpr);
     } else {
       console.log(owner.type);
     }
