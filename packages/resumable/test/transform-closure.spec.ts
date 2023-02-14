@@ -11,10 +11,9 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export function App() {
+      export const App$tmqoipt = __$("App$tmqoipt", function App() {
         return "Hello App";
-      }
-      __closure("App", App);
+      });
     `;
     assertTransform(code, expected);
   });
@@ -26,10 +25,9 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export async function App() {
+      export const App$jxeilkt = __$("App$jxeilkt", async function App() {
         return "Hello App";
-      }
-      __closure("App", App);
+      });
     `;
     assertTransform(code, expected);
   });
@@ -41,25 +39,25 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export function App() {
+      export const App$sjwlfok = __$("App$sjwlfok", function App() {
         return "Hello App";
-      }
-      __closure("App", App);
+      });
+      export const App = App$sjwlfok;
     `;
     assertTransform(code, expected);
   });
 
-  it('flag default function', () => {
+  it('flag default function###', () => {
     const code = `
       export default function App() {
         return "Hello App";
       }
     `;
     const expected = `
-      const App = __closure("App", function App() {
+      export const App$pswdilj = __$("App$pswdilj", function App() {
         return "Hello App";
       });
-      export default App;
+      export default App$pswdilj;
     `;
     assertTransform(code, expected);
   });
@@ -71,10 +69,10 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      const ssfjqgfkln = __closure("ssfjqgfkln", function () {
+      export const $lwnxisabyt = __$("$lwnxisabyt", function () {
         return "Hello Anonymous";
       });
-      export default ssfjqgfkln;
+      export default $lwnxisabyt;
     `;
     assertTransform(code, expected);
   });
@@ -87,11 +85,16 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const Compodfldr = __closure("Compodfldr", function Component() {});
-      export function App() {
-        return Compodfldr;
-      }
-      __closure("App", App);
+    export const App$bbilidh = (Compo$dfldr) =>
+      __$(
+        "App$bbilidh",
+        function App() {
+          return Compo$dfldr;
+        },
+        [Compo$dfldr]
+      );
+    export const Compo$dfldr = __$("Compo$dfldr", function Component() {});
+    export const App = App$bbilidh(Compo$dfldr);
     `;
     assertTransform(code, expected);
   });
@@ -105,15 +108,17 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const Compochsbg = __closure(
-        "Compochsbg",
-        async function Component() {}
-      );
-      export function App() {
-        return Compochsbg;
-      }
-      __closure("App", App);
-    `;
+      export const App$djukmjr = (Compo$chsbg) =>
+        __$(
+          "App$djukmjr",
+          function App() {
+            return Compo$chsbg;
+          },
+          [Compo$chsbg]
+        );
+      export const Compo$chsbg = __$("Compo$chsbg", async function Component() {});
+      export const App = App$djukmjr(Compo$chsbg);
+        `;
     assertTransform(code, expected);
   });
 
@@ -128,17 +133,25 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const Compoexfaq = (a) =>
-        __closure("Compoexfaq", function Component() {
-            return a;
-          }, [a]
+      export const App$amqcbor = (Compo$exfaq) =>
+        __$(
+          "App$amqcbor",
+          function App() {
+            const a = 1;
+      
+            return Compo$exfaq(a)();
+          },
+          [Compo$exfaq]
         );
-      export function App() {
-        const a = 1;
-
-        return Compoexfaq(a)();
-      }
-      __closure("App", App);
+      export const Compo$exfaq = (a) =>
+        __$(
+          "Compo$exfaq",
+          function Component() {
+            return a;
+          },
+          [a]
+        );
+      export const App = App$amqcbor(Compo$exfaq);
       `;
     assertTransform(code, expected);
   });
@@ -152,15 +165,23 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const Compowyekn = (a) =>
-        __closure("Compowyekn", function Component() {
-            return a;
-          }, [a]
+      export const App$pcdqivo = (Compo$wyekn) =>
+        __$(
+          "App$pcdqivo",
+          function App(a = 1) {
+            return Compo$wyekn(a);
+          },
+          [Compo$wyekn]
         );
-      export function App(a = 1) {
-        return Compowyekn(a);
-      }
-      __closure("App", App);
+      export const Compo$wyekn = (a) =>
+        __$(
+          "Compo$wyekn",
+          function Component() {
+            return a;
+          },
+          [a]
+        );
+      export const App = App$pcdqivo(Compo$wyekn);
     `;
     assertTransform(code, expected);
   });
@@ -174,13 +195,18 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const Compoqechi = __closure("Compoqechi", function Component() {
+      export const App$vhucbbj = (Compo$qechi) =>
+        __$(
+          "App$vhucbbj",
+          function App() {
+            return Compo$qechi;
+          },
+          [Compo$qechi]
+        );
+      export const Compo$qechi = __$("Compo$qechi", function Component() {
         return a;
       });
-      export function App() {
-        return Compoqechi;
-      }
-      __closure("App", App);
+      export const App = App$vhucbbj(Compo$qechi);
       `;
     assertTransform(code, expected);
   });
@@ -195,13 +221,25 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const ekbfkukmqv = (a) =>
-        __closure("ekbfkukmqv", function () { return a; }, [a] );
-      export function App() {
-        const a = 1;
-        return ekbfkukmqv(a);
-      }
-      __closure("App", App);`;
+      export const App$qdchwsi = ($ekbfkukmqv) =>
+        __$(
+          "App$qdchwsi",
+          function App() {
+            const a = 1;
+            return $ekbfkukmqv(a);
+          },
+          [$ekbfkukmqv]
+        );
+      export const $ekbfkukmqv = (a) =>
+        __$(
+          "$ekbfkukmqv",
+          function () {
+            return a;
+          },
+          [a]
+        );
+      export const App = App$qdchwsi($ekbfkukmqv);
+  `;
     assertTransform(code, expected);
   });
 
@@ -216,14 +254,19 @@ describe('export declarations', () => {
     `;
 
     const expect = `
-      export const ekbfkukmik = __closure("ekbfkukmik", function (a) {
+      export const App$qdchwtf = ($ekbfkukmik) =>
+        __$(
+          "App$qdchwtf",
+          function App() {
+            const a = 1;
+            return $ekbfkukmik;
+          },
+          [$ekbfkukmik]
+        );
+      export const $ekbfkukmik = __$("$ekbfkukmik", function (a) {
         return a;
       });
-      export function App() {
-        const a = 1;
-        return ekbfkukmik;
-      }
-      __closure("App", App);
+      export const App = App$qdchwtf($ekbfkukmik);
     `;
 
     assertTransform(code, expect);
@@ -237,9 +280,9 @@ describe('export declarations', () => {
     `;
 
     const expect = `
-      export const tscsulffff = __closure("tscsulffff", function () {});
+      export const $tscsulffff = __$("$tscsulffff", function () {});
       export const App = {
-        createELement: tscsulffff,
+        createELement: $tscsulffff,
       };
     `;
 
@@ -254,9 +297,9 @@ describe('export declarations', () => {
     `;
 
     const expect = `
-      export const qriussyyyy = __closure("qriussyyyy", async function () {});
+      export const $qriussyyyy = __$("$qriussyyyy", async function () {});
       export const App = {
-        createELement: qriussyyyy,
+        createELement: $qriussyyyy,
       };
     `;
 
@@ -277,24 +320,34 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      export const uodtyghxmi = __closure("uodtyghxmi", (result) => {
-        return {
-          dispose: ymcmycrwbw,
-        };
-      });
-      export const ymcmycrwbw = __closure("ymcmycrwbw", function () {
+      export const App$flninsi = ($uodtyghxmi, $ymcmycrwbw) =>
+        __$(
+          "App$flninsi",
+          function App() {
+            return compile().then($uodtyghxmi($ymcmycrwbw));
+          },
+          [$uodtyghxmi, $ymcmycrwbw]
+        );
+      export const $uodtyghxmi = ($ymcmycrwbw) =>
+        __$(
+          "$uodtyghxmi",
+          (result) => {
+            return {
+              dispose: $ymcmycrwbw,
+            };
+          },
+          [$ymcmycrwbw]
+        );
+      export const $ymcmycrwbw = __$("$ymcmycrwbw", function () {
         // dispose
       });
-      export function App() {
-        return compile().then(uodtyghxmi);
-      }
-      __closure("App", App);
+      export const App = App$flninsi($uodtyghxmi, $ymcmycrwbw);
       `;
 
     assertTransform(code, expected);
   });
 
-  it('delay', () => {
+  it('delay####', () => {
     const code = `
       export function App(value, ts = 1000) {
         return new Promise((resolve, reject) => {
@@ -306,24 +359,37 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      export const mgwbwxdhnh = (value, ts) =>
-        __closure("mgwbwxdhnh", (resolve, reject) => {
-            setTimeout(weemnbmmcf(resolve, value), ts);
-          }, [value, ts] );
-      export const weemnbmmcf = (resolve, value) =>
-        __closure("weemnbmmcf", function () {
-          resolve(value);
-        }, [resolve, value] );
-      export function App(value, ts = 1000) {
-        return new Promise(mgwbwxdhnh(value, ts));
-      }
-      __closure("App", App);
+      export const App$lsbjykd = ($mgwbwxdhnh, $weemnbmmcf) =>
+        __$(
+          "App$lsbjykd",
+          function App(value, ts = 1000) {
+            return new Promise($mgwbwxdhnh(ts, $weemnbmmcf));
+          },
+          [$mgwbwxdhnh, $weemnbmmcf]
+        );
+      export const $mgwbwxdhnh = (ts, $weemnbmmcf) =>
+        __$(
+          "$mgwbwxdhnh",
+          (resolve, reject) => {
+            setTimeout($weemnbmmcf(resolve, value), ts);
+          },
+          [ts, $weemnbmmcf]
+        );
+      export const $weemnbmmcf = (resolve, value) =>
+        __$(
+          "$weemnbmmcf",
+          function () {
+            resolve(value);
+          },
+          [resolve, value]
+        );
+      export const App = App$lsbjykd($mgwbwxdhnh, $weemnbmmcf);
     `;
 
     assertTransform(code, expected);
   });
 
-  it('local function reference', () => {
+  it('local function reference  ####', () => {
     const code = `
       export function App(a) {
         function handler() {
@@ -335,21 +401,29 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      export const handlcybng = (a) =>
-        __closure("handlcybng",function handler() {
-            console.log(a);
-          }, [a]
+      export const App$cjachpq = (handl$cybng) =>
+        __$(
+          "App$cjachpq",
+          function App(a) {
+            return { a: handl$cybng(a) };
+          },
+          [handl$cybng]
         );
-      export function App(a) {
-        return { a: handlcybng(a) };
-      }
-      __closure("App", App);
+      export const handl$cybng = (a) =>
+        __$(
+          "handl$cybng",
+          function handler() {
+            console.log(a);
+          },
+          [a]
+        );
+      export const App = App$cjachpq(handl$cybng);
     `;
 
     assertTransform(code, expected);
   });
 
-  it('export default function declaration', () => {
+  it('export default function declaration####', () => {
     const code = `
       export default function App() {
         return function Component() {}
@@ -357,16 +431,21 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      const App = __closure("App", function App() {
-        return Compoomooc;
-      });
-      export const Compoomooc = __closure("Compoomooc", function Component() {});
-      export default App;
+      export const App$fkfwtdi = (Compo$omooc) =>
+        __$(
+          "App$fkfwtdi",
+          function App() {
+            return Compo$omooc;
+          },
+          [Compo$omooc]
+        );
+      export const Compo$omooc = __$("Compo$omooc", function Component() {});
+      export default App$fkfwtdi;
     `;
     assertTransform(code, expected);
   });
 
-  it('closure over root variable declaration', () => {
+  it('closure over root variable declaration###', () => {
     const code = `
       const jsx = null;
       export default function App() {
@@ -378,18 +457,23 @@ describe('export declarations', () => {
 
     const expected = `
       const jsx = null;
-      const App = __closure("App", function App() {
-        return Compoqluqm(jsx);
-      });
-      export const Compoqluqm = (jsx) =>
-        __closure(
-          "Compoqluqm",
+      export const App$juxkhef = (Compo$qluqm) =>
+        __$(
+          "App$juxkhef",
+          function App() {
+            return Compo$qluqm(jsx);
+          },
+          [Compo$qluqm]
+        );
+      export const Compo$qluqm = (jsx) =>
+        __$(
+          "Compo$qluqm",
           function Component() {
             return jsx;
           },
           [jsx]
         );
-      export default App;
+      export default App$juxkhef;
     `;
     assertTransform(code, expected);
   });
