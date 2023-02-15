@@ -430,7 +430,7 @@ describe('export declarations', () => {
     assertTransform(code, expected);
   });
 
-  it('local function reference####', () => {
+  it('local function reference', () => {
     const code = `
       export function App(a) {
         function handler() {
@@ -446,7 +446,7 @@ describe('export declarations', () => {
         return __$(
           "App$cjachpq",
           function App(a) {
-            return { a: handler };
+            return { a: handl$cybng(a) };
           },
           [handl$cybng]
         );

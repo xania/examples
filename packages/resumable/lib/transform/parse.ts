@@ -109,6 +109,7 @@ export function parse(code: string, filter: (name: string) => boolean) {
           node.type === 'FunctionExpression'
         ) {
           if (node.id) skipEnter.set(node.id!, 'deep');
+          if (node.id) scope.declarations.set(node.id.name, node.id.name);
 
           if (parent.type !== 'MethodDefinition' || parent.kind !== 'get') {
             const alias = __alias(code, node, rootStart);
@@ -116,8 +117,6 @@ export function parse(code: string, filter: (name: string) => boolean) {
 
             if (filter(funName)) {
               scope.exports.set(funName, new Closure(alias, parent, funcScope));
-            } else {
-              scope.declarations.set(funName, funName);
             }
           }
         } else if (node.type === 'ArrowFunctionExpression') {

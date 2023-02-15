@@ -77,6 +77,9 @@ function getBindings(closure: Closure) {
 
         if (decl) {
           if (decl instanceof Closure) {
+            for (const [n, v] of getBindings(decl)) {
+              if (!closure.scope.declarations.has(n)) bindings.set(n, v);
+            }
             bindings.set(decl.exportName, [ref.name, decl]);
           } else {
             bindings.set(ref.name, ref.name);

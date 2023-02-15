@@ -29,7 +29,7 @@ describe('substitute func reference', () => {
     assertTransform(code, expected);
   });
 
-  it('from property to parent scope####', () => {
+  it('from property to parent scope', () => {
     const code = `
       export function App() {
         function setCompleted() {}
@@ -45,7 +45,7 @@ describe('substitute func reference', () => {
         return __$(
           "App$afygqfa",
           function App() {
-            return Compo$acmme();
+            return Compo$acmme(setCo$slrkq);
           },
           [setCo$slrkq, Compo$acmme]
         );
@@ -53,19 +53,23 @@ describe('substitute func reference', () => {
       export function setCo$slrkq() {
         return __$("setCo$slrkq", function setCompleted() {});
       }
-      export function Compo$acmme() {
-        return __$("Compo$acmme", function Component() {
-          return {
-            children: setCompleted,
-          };
-        });
+      export function Compo$acmme(setCo$slrkq) {
+        return __$(
+          "Compo$acmme",
+          function Component() {
+            return {
+              children: setCo$slrkq(),
+            };
+          },
+          [setCo$slrkq]
+        );
       }
       export const App = App$afygqfa(setCo$slrkq, Compo$acmme);
     `;
     assertTransform(code, expected);
   });
 
-  it('from for statement####', () => {
+  it('from for statement', () => {
     const code = `
       export function App() {
         function setCompleted() {}
@@ -80,7 +84,7 @@ describe('substitute func reference', () => {
           "App$uidmoal",
           function App() {
             for (let i = 0; i < 100; i++) {
-              return setCompleted();
+              return setCo$slrkq()();
             }
           },
           [setCo$slrkq]
@@ -94,7 +98,7 @@ describe('substitute func reference', () => {
     assertTransform(code, expected);
   });
 
-  it('from class member to parent scope####', () => {
+  it('from class member to parent scope', () => {
     const code = `
       export function App() {
         const a = 1;
@@ -113,7 +117,7 @@ describe('substitute func reference', () => {
           function App() {
             const a = 1;
       
-            return Compo$csvmj();
+            return Compo$csvmj(a, setCo$nwlef);
           },
           [setCo$nwlef, Compo$csvmj]
         );
@@ -127,12 +131,13 @@ describe('substitute func reference', () => {
           [a]
         );
       }
-      export function Compo$csvmj() {
+      export function Compo$csvmj(a, setCo$nwlef) {
         return __$(
           "Compo$csvmj",
           class Component {
-            setCompleted = setCompleted;
-          }
+            setCompleted = setCo$nwlef(a);
+          },
+          [a, setCo$nwlef]
         );
       }
       export const App = App$qdibfod(setCo$nwlef, Compo$csvmj);

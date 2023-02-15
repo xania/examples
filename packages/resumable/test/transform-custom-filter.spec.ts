@@ -15,7 +15,7 @@ const code = `
   }
   `;
 
-describe('from class member to parent scope####', () => {
+describe('from class member to parent scope', () => {
   it('export setCompleted', () => {
     const expected = `
       export function setCo$oukbd(a) {
@@ -31,7 +31,7 @@ describe('from class member to parent scope####', () => {
         const a = 1;
       
         return class Component {
-          setCompleted = setCompleted;
+          setCompleted = setCo$oukbd(a);
         };
       }
     `;
@@ -90,7 +90,7 @@ describe('from class member to parent scope####', () => {
     });
   });
 
-  it('export Component and setCompleted####', () => {
+  it('export Component and setCompleted', () => {
     const expected = `
       export function setCo$oukbd(a) {
         return __$(
@@ -101,18 +101,19 @@ describe('from class member to parent scope####', () => {
           [a]
         );
       }
-      export function Compo$kukne() {
+      export function Compo$kukne(a, setCo$oukbd) {
         return __$(
           "Compo$kukne",
           class Component {
-            setCompleted = setCompleted;
-          }
+            setCompleted = setCo$oukbd(a);
+          },
+          [a, setCo$oukbd]
         );
       }
       export function App() {
         const a = 1;
       
-        return Compo$kukne();
+        return Compo$kukne(a, setCo$oukbd);
       }
     `;
     assertTransform(code, expected, {
@@ -122,7 +123,7 @@ describe('from class member to parent scope####', () => {
     });
   });
 
-  it('export all####', () => {
+  it('export all', () => {
     const expected = `
       export function App$kirgacs(setCo$oukbd, Compo$kukne) {
         return __$(
@@ -130,7 +131,7 @@ describe('from class member to parent scope####', () => {
           function App() {
             const a = 1;
       
-            return Compo$kukne();
+            return Compo$kukne(a, setCo$oukbd);
           },
           [setCo$oukbd, Compo$kukne]
         );
@@ -144,12 +145,13 @@ describe('from class member to parent scope####', () => {
           [a]
         );
       }
-      export function Compo$kukne() {
+      export function Compo$kukne(a, setCo$oukbd) {
         return __$(
           "Compo$kukne",
           class Component {
-            setCompleted = setCompleted;
-          }
+            setCompleted = setCo$oukbd(a);
+          },
+          [a, setCo$oukbd]
         );
       }
       export const App = App$kirgacs(setCo$oukbd, Compo$kukne);
