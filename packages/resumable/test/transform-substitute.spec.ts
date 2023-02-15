@@ -12,18 +12,24 @@ describe('substitute func reference', () => {
       }
       `;
     const expected = `
-      export const App$ncsfemd = (handl$omttt) =>
-        __$("App$ncsfemd", function App() {
-            return handl$omttt();
-          }, [handl$omttt]
+      export function App$ncsfemd(handl$omttt) {
+        return __$(
+          "App$ncsfemd",
+          function App() {
+            return handl$omttt()();
+          },
+          [handl$omttt]
         );
-      export const handl$omttt = __$("handl$omttt", function handler() {});
+      }
+      export function handl$omttt() {
+        return __$("handl$omttt", function handler() {});
+      }
       export const App = App$ncsfemd(handl$omttt);
       `;
     assertTransform(code, expected);
   });
 
-  it('from property to parent scope', () => {
+  it('from property to parent scope####', () => {
     const code = `
       export function App() {
         function setCompleted() {}
@@ -35,31 +41,31 @@ describe('substitute func reference', () => {
       }
       `;
     const expected = `
-      export const App$afygqfa = (setCo$slrkq, Compo$acmme) =>
-        __$(
+      export function App$afygqfa(setCo$slrkq, Compo$acmme) {
+        return __$(
           "App$afygqfa",
           function App() {
-            return Compo$acmme(setCo$slrkq);
+            return Compo$acmme();
           },
           [setCo$slrkq, Compo$acmme]
         );
-      export const setCo$slrkq = __$("setCo$slrkq", function setCompleted() {});
-      export const Compo$acmme = (setCompleted) =>
-        __$(
-          "Compo$acmme",
-          function Component() {
-            return {
-              children: setCompleted,
-            };
-          },
-          [setCompleted]
-        );
+      }
+      export function setCo$slrkq() {
+        return __$("setCo$slrkq", function setCompleted() {});
+      }
+      export function Compo$acmme() {
+        return __$("Compo$acmme", function Component() {
+          return {
+            children: setCompleted,
+          };
+        });
+      }
       export const App = App$afygqfa(setCo$slrkq, Compo$acmme);
     `;
     assertTransform(code, expected);
   });
 
-  it('from for statement', () => {
+  it('from for statement####', () => {
     const code = `
       export function App() {
         function setCompleted() {}
@@ -69,23 +75,26 @@ describe('substitute func reference', () => {
       }
       `;
     const expected = `
-      export const App$uidmoal = (setCo$slrkq) =>
-        __$(
+      export function App$uidmoal(setCo$slrkq) {
+        return __$(
           "App$uidmoal",
           function App() {
             for (let i = 0; i < 100; i++) {
-              return setCo$slrkq();
+              return setCompleted();
             }
           },
           [setCo$slrkq]
         );
-      export const setCo$slrkq = __$("setCo$slrkq", function setCompleted() {});
+      }
+      export function setCo$slrkq() {
+        return __$("setCo$slrkq", function setCompleted() {});
+      }
       export const App = App$uidmoal(setCo$slrkq);
       `;
     assertTransform(code, expected);
   });
 
-  it('from class member to parent scope', () => {
+  it('from class member to parent scope####', () => {
     const code = `
       export function App() {
         const a = 1;
@@ -98,29 +107,34 @@ describe('substitute func reference', () => {
       }
       `;
     const expected = `
-      export const App$qdibfod = (setCo$nwlef, Compo$csvmj) =>
-        __$("App$qdibfod",
+      export function App$qdibfod(setCo$nwlef, Compo$csvmj) {
+        return __$(
+          "App$qdibfod",
           function App() {
             const a = 1;
       
-            return Compo$csvmj(setCo$nwlef(a));
+            return Compo$csvmj();
           },
           [setCo$nwlef, Compo$csvmj]
         );
-      export const setCo$nwlef = (a) =>
-        __$("setCo$nwlef",
+      }
+      export function setCo$nwlef(a) {
+        return __$(
+          "setCo$nwlef",
           function setCompleted() {
             return a;
           },
           [a]
         );
-      export const Compo$csvmj = (setCompleted) =>
-        __$("Compo$csvmj",
+      }
+      export function Compo$csvmj() {
+        return __$(
+          "Compo$csvmj",
           class Component {
             setCompleted = setCompleted;
-          },
-          [setCompleted]
+          }
         );
+      }
       export const App = App$qdibfod(setCo$nwlef, Compo$csvmj);
       `;
     assertTransform(code, expected);

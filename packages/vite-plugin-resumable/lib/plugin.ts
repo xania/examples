@@ -32,7 +32,20 @@ export function resumable(xn?: Options): Plugin {
 
       vite.middlewares.use(async (req, res, next) => {
         const reqUrl = req.url || '';
-        if (req.headers.accept?.includes('text/html')) {
+        if (reqUrl.startsWith('/@resumable/')) {
+          const loader = createLoader(vite);
+          const result = await loader.loadAndTransform(
+            reqUrl.substring('/@resumable'.length)
+          );
+          if (result) {
+            res.setHeader('Content-Type', 'application/javascript');
+            res.write(result.code);
+            res.write(result.genSourceMap());
+
+            res.end();
+            return;
+          }
+        } else if (req.headers.accept?.includes('text/html')) {
           const pageUrl = await resolvePage(reqUrl);
           if (pageUrl) {
             try {
@@ -76,19 +89,6 @@ export function resumable(xn?: Options): Plugin {
               console.log(kleur.red(err));
               throw err;
             }
-          }
-        } else if (reqUrl.startsWith('/@resumable/')) {
-          const loader = createLoader(vite);
-          const result = await loader.loadAndTransform(
-            reqUrl.substring('/@resumable'.length)
-          );
-          if (result) {
-            res.setHeader('Content-Type', 'application/javascript');
-            res.write(result.code);
-            res.write(result.genSourceMap());
-
-            res.end();
-            return;
           }
         }
 

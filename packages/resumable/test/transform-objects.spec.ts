@@ -11,10 +11,12 @@ describe('object expressions', () => {
       }
       `;
     const expected = `
-      export const $edvqpvyffl = __$("$edvqpvyffl", () => {});
-      export const app = {
-        arrow: $edvqpvyffl
+      export function $edvqpvyffl() {
+        return __$("$edvqpvyffl", () => {});
       }
+      export const app = {
+        arrow: $edvqpvyffl(),
+      };
       `;
     assertTransform(code, expected);
   });
@@ -26,9 +28,11 @@ describe('object expressions', () => {
       }
       `;
     const expected = `
-      export const $nqwobvedvq = __$("$nqwobvedvq", async () => {});
+      export function $nqwobvedvq() {
+        return __$("$nqwobvedvq", async () => {});
+      }
       export const app = {
-        arrow: $nqwobvedvq,
+        arrow: $nqwobvedvq(),
       };
       `;
     assertTransform(code, expected);

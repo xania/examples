@@ -31,8 +31,8 @@ export function transform(
 
     updateImports(magicString, scope);
 
-    for (const [_, cl] of scope.exports) {
-      exportClosure(magicString, cl);
+    for (const [cname, cl] of scope.exports) {
+      exportClosure(magicString, cname, cl);
     }
   }
 
@@ -63,52 +63,138 @@ function updateImports(magicString: MagicString, scope: Scope) {
   }
 }
 
-function formatBindings(bindings: Map<string, string | Closure>) {
-  const args: string[] = [];
-  const params: string[] = [];
+function getBindings(closure: Closure) {
+  const bindings = new Map<string, string | [string, Closure]>();
+  for (const ref of closure.scope.references) {
+    if (ref instanceof Closure) {
+      bindings.set(ref.exportName, ref.exportName);
+    } else if (ref.type === 'Identifier') {
+      if (
+        closure.scope.exports.has(ref.name) ||
+        !closure.scope.declarations.has(ref.name)
+      ) {
+        const decl = resolve(closure.scope, ref.name);
 
-  for (const [k, arg] of bindings) {
-    params.push(k);
-    if (arg instanceof Closure) {
-      if (arg.bindings.size) {
-        const [_, nestedArgs] = formatBindings(arg.bindings);
-        args.push(`${arg.exportName}(${nestedArgs})`);
-      } else {
-        args.push(arg.exportName);
+        if (decl) {
+          if (decl instanceof Closure) {
+            bindings.set(decl.exportName, [ref.name, decl]);
+          } else {
+            bindings.set(ref.name, ref.name);
+          }
+        }
       }
-    } else {
-      args.push(arg);
+    } else if (!closure.scope.thisable) {
+      bindings.set('this_' + closure.scope.owner.start, 'this');
     }
   }
 
-  return [params.join(', '), args.join(', ')];
+  for (const [n, cl] of closure.scope.exports) {
+    bindings.set(cl.exportName, cl.exportName);
+  }
+
+  return bindings;
+
+  function resolve(leaf: Scope, ref: string): Closure | string | null {
+    let scope: Scope | undefined = leaf;
+    while (scope) {
+      if (scope.exports.has(ref)) return scope.exports.get(ref)!;
+      if (scope.declarations.has(ref)) return scope.declarations.get(ref)!;
+      scope = scope.parent;
+    }
+    return null;
+  }
 }
 
-function exportClosure(magicString: MagicString, closure: Closure) {
+function formatBindings(
+  bindings: Map<string, string | [string, Closure]>,
+  stack = new Set()
+) {
+  if (stack.has(bindings)) {
+    debugger;
+    return [];
+  }
+
+  stack.add(bindings);
+
+  const args: string[] = [];
+  const params: string[] = [];
+  const inits: string[] = [];
+
+  for (const [k, arg] of bindings) {
+    params.push(k);
+    if (typeof arg === 'string') {
+      args.push(arg);
+    } else {
+      const [n, cl] = arg;
+      // const bindings = getBindings(cl);
+      args.push(cl.exportName);
+      // if (bindings.size) {
+      //   const [_, nestedArgs] = formatBindings(bindings, stack);
+      //   // inits.push(`const ${n} = ${cl.exportName}(${nestedArgs});`);
+      // } else {
+      //   // inits.push(`const ${n} = ${cl.exportName};`);
+      // }
+    }
+  }
+
+  return [params.join(', '), args.join(', '), inits] as const;
+}
+
+function exportClosure(
+  magicString: MagicString,
+  closureName: string,
+  closure: Closure
+) {
   const { owner, rootStart } = closure.scope;
 
-  const [params, args] = formatBindings(closure.bindings);
+  const bindings = getBindings(closure);
+  const [params, args, inits] = formatBindings(bindings);
 
   if (owner.start !== rootStart) {
     magicString.move(owner.start, owner.end, rootStart);
   }
-  magicString.appendRight(owner.start, `export const ${closure.exportName} =`);
-  if (params) {
-    magicString.appendRight(owner.start, ` (${params}) =>`);
-  }
-  magicString.appendRight(owner.start, ` __$("${closure.exportName}", `);
-
+  magicString.appendRight(
+    owner.start,
+    `export function ${closure.exportName}(${params}) {\n`
+  );
+  magicString.appendRight(
+    owner.start,
+    `${inits.join('\n')}\nreturn __$("${closure.exportName}", `
+  );
+  magicString.appendLeft(owner.end, `\n`);
   if (params) {
     magicString.appendLeft(owner.end, `, [${params}]`);
   }
-  magicString.appendLeft(owner.end, ');\n');
+  magicString.appendLeft(owner.end, ');\n}\n');
 
   const refSubstitute = formatInit(closure.exportName, args);
-  for (const ref of closure.references) {
-    if (ref.type === 'Identifier') {
-      magicString.overwrite(ref.start, ref.end, refSubstitute);
-    } else {
-      magicString.overwrite(ref.start, ref.end, 'this_' + closure.parent.start);
+
+  const parentScope = closure.scope.parent;
+  for (const ref of closure.scope.references) {
+    if (ref instanceof Closure) {
+    } else if (ref.type === 'ThisExpression') {
+      if (!closure.scope.thisable) {
+        magicString.overwrite(
+          ref.start,
+          ref.end,
+          'this_' + closure.scope.owner.start
+        );
+      }
+    }
+  }
+  if (parentScope) {
+    for (const ref of parentScope.references) {
+      if (ref instanceof Closure) {
+      } else if (ref.type === 'Identifier') {
+        if (ref.name === closureName)
+          magicString.overwrite(ref.start, ref.end, refSubstitute);
+      } else {
+        // magicString.overwrite(
+        //   ref.start,
+        //   ref.end,
+        //   '__this_' + closure.parent.start
+        // );
+      }
     }
   }
 
@@ -193,8 +279,5 @@ function exportClosure(magicString: MagicString, closure: Closure) {
 }
 
 function formatInit(ref: string, args: string) {
-  if (args) {
-    return `(${ref}(${args}))`;
-  }
-  return ref;
+  return `(${ref}(${args}))`;
 }

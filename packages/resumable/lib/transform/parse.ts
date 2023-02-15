@@ -65,6 +65,7 @@ export function parse(code: string, filter: (name: string) => boolean) {
         scopes.push(classScope);
 
         if (node.id) {
+          scope.declarations.set(node.id.name, node.id.name);
           skipEnter.set(node.id, 'deep');
           if (filter(node.id.name)) {
             const alias = __alias(code, node, scope.rootStart);

@@ -11,9 +11,11 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const App$tmqoipt = __$("App$tmqoipt", function App() {
-        return "Hello App";
-      });
+      export function App$tmqoipt() {
+        return __$("App$tmqoipt", function App() {
+          return "Hello App";
+        });
+      }    
     `;
     assertTransform(code, expected);
   });
@@ -25,9 +27,11 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const App$jxeilkt = __$("App$jxeilkt", async function App() {
-        return "Hello App";
-      });
+      export function App$jxeilkt() {
+        return __$("App$jxeilkt", async function App() {
+          return "Hello App";
+        });
+      }
     `;
     assertTransform(code, expected);
   });
@@ -39,10 +43,12 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const App$sjwlfok = __$("App$sjwlfok", function App() {
-        return "Hello App";
-      });
-      export const App = App$sjwlfok;
+      export function App$sjwlfok() {
+        return __$("App$sjwlfok", function App() {
+          return "Hello App";
+        });
+      }
+      export const App = App$sjwlfok();
     `;
     assertTransform(code, expected);
   });
@@ -54,10 +60,12 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const App$pswdilj = __$("App$pswdilj", function App() {
-        return "Hello App";
-      });
-      const App = App$pswdilj;
+      export function App$pswdilj() {
+        return __$("App$pswdilj", function App() {
+          return "Hello App";
+        });
+      }
+      const App = App$pswdilj();
       export default App;
     `;
     assertTransform(code, expected);
@@ -70,10 +78,12 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const $lwnxisabyt = __$("$lwnxisabyt", function () {
-        return "Hello Anonymous";
-      });
-      export default $lwnxisabyt;
+      export function $lwnxisabyt() {
+        return __$("$lwnxisabyt", function () {
+          return "Hello Anonymous";
+        });
+      }
+      export default $lwnxisabyt();
     `;
     assertTransform(code, expected);
   });
@@ -86,16 +96,19 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-    export const App$bbilidh = (Compo$dfldr) =>
-      __$(
-        "App$bbilidh",
-        function App() {
-          return Compo$dfldr;
-        },
-        [Compo$dfldr]
-      );
-    export const Compo$dfldr = __$("Compo$dfldr", function Component() {});
-    export const App = App$bbilidh(Compo$dfldr);
+      export function App$bbilidh(Compo$dfldr) {
+        return __$(
+          "App$bbilidh",
+          function App() {
+            return Compo$dfldr();
+          },
+          [Compo$dfldr]
+        );
+      }
+      export function Compo$dfldr() {
+        return __$("Compo$dfldr", function Component() {});
+      }
+      export const App = App$bbilidh(Compo$dfldr);
     `;
     assertTransform(code, expected);
   });
@@ -109,15 +122,18 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const App$djukmjr = (Compo$chsbg) =>
-        __$(
+      export function App$djukmjr(Compo$chsbg) {
+        return __$(
           "App$djukmjr",
           function App() {
-            return Compo$chsbg;
+            return Compo$chsbg();
           },
           [Compo$chsbg]
         );
-      export const Compo$chsbg = __$("Compo$chsbg", async function Component() {});
+      }
+      export function Compo$chsbg() {
+        return __$("Compo$chsbg", async function Component() {});
+      }
       export const App = App$djukmjr(Compo$chsbg);
         `;
     assertTransform(code, expected);
@@ -134,8 +150,8 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const App$amqcbor = (Compo$exfaq) =>
-        __$(
+      export function App$amqcbor(Compo$exfaq) {
+        return __$(
           "App$amqcbor",
           function App() {
             const a = 1;
@@ -144,14 +160,16 @@ describe('export declarations', () => {
           },
           [Compo$exfaq]
         );
-      export const Compo$exfaq = (a) =>
-        __$(
+      }
+      export function Compo$exfaq(a) {
+        return __$(
           "Compo$exfaq",
           function Component() {
             return a;
           },
           [a]
         );
+      }
       export const App = App$amqcbor(Compo$exfaq);
       `;
     assertTransform(code, expected);
@@ -166,22 +184,24 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const App$pcdqivo = (Compo$wyekn) =>
-        __$(
+      export function App$pcdqivo(Compo$wyekn) {
+        return __$(
           "App$pcdqivo",
           function App(a = 1) {
             return Compo$wyekn(a);
           },
           [Compo$wyekn]
         );
-      export const Compo$wyekn = (a) =>
-        __$(
+      }
+      export function Compo$wyekn(a) {
+        return __$(
           "Compo$wyekn",
           function Component() {
             return a;
           },
           [a]
         );
+      }
       export const App = App$pcdqivo(Compo$wyekn);
     `;
     assertTransform(code, expected);
@@ -196,17 +216,20 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const App$vhucbbj = (Compo$qechi) =>
-        __$(
+      export function App$vhucbbj(Compo$qechi) {
+        return __$(
           "App$vhucbbj",
           function App() {
-            return Compo$qechi;
+            return Compo$qechi();
           },
           [Compo$qechi]
         );
-      export const Compo$qechi = __$("Compo$qechi", function Component() {
-        return a;
-      });
+      }
+      export function Compo$qechi() {
+        return __$("Compo$qechi", function Component() {
+          return a;
+        });
+      }
       export const App = App$vhucbbj(Compo$qechi);
       `;
     assertTransform(code, expected);
@@ -222,8 +245,8 @@ describe('export declarations', () => {
       }
     `;
     const expected = `
-      export const App$qdchwsi = ($ekbfkukmqv) =>
-        __$(
+      export function App$qdchwsi($ekbfkukmqv) {
+        return __$(
           "App$qdchwsi",
           function App() {
             const a = 1;
@@ -231,14 +254,16 @@ describe('export declarations', () => {
           },
           [$ekbfkukmqv]
         );
-      export const $ekbfkukmqv = (a) =>
-        __$(
+      }
+      export function $ekbfkukmqv(a) {
+        return __$(
           "$ekbfkukmqv",
           function () {
             return a;
           },
           [a]
         );
+      }
       export const App = App$qdchwsi($ekbfkukmqv);
   `;
     assertTransform(code, expected);
@@ -255,18 +280,21 @@ describe('export declarations', () => {
     `;
 
     const expect = `
-      export const App$qdchwtf = ($ekbfkukmik) =>
-        __$(
+      export function App$qdchwtf($ekbfkukmik) {
+        return __$(
           "App$qdchwtf",
           function App() {
             const a = 1;
-            return $ekbfkukmik;
+            return $ekbfkukmik();
           },
           [$ekbfkukmik]
         );
-      export const $ekbfkukmik = __$("$ekbfkukmik", function (a) {
-        return a;
-      });
+      }
+      export function $ekbfkukmik() {
+        return __$("$ekbfkukmik", function (a) {
+          return a;
+        });
+      }
       export const App = App$qdchwtf($ekbfkukmik);
     `;
 
@@ -281,9 +309,11 @@ describe('export declarations', () => {
     `;
 
     const expect = `
-      export const $tscsulffff = __$("$tscsulffff", function () {});
+      export function $tscsulffff() {
+        return __$("$tscsulffff", function () {});
+      }
       export const App = {
-        createELement: $tscsulffff,
+        createELement: $tscsulffff(),
       };
     `;
 
@@ -298,10 +328,13 @@ describe('export declarations', () => {
     `;
 
     const expect = `
-      export const $qriussyyyy = __$("$qriussyyyy", async function () {});
+      export function $qriussyyyy() {
+        return __$("$qriussyyyy", async function () {});
+      }
       export const App = {
-        createELement: $qriussyyyy,
+        createELement: $qriussyyyy(),
       };
+    
     `;
 
     assertTransform(code, expect);
@@ -321,34 +354,38 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      export const App$flninsi = ($uodtyghxmi, $ymcmycrwbw) =>
-        __$(
+      export function App$flninsi($ymcmycrwbw, $uodtyghxmi) {
+        return __$(
           "App$flninsi",
           function App() {
             return compile().then($uodtyghxmi($ymcmycrwbw));
           },
-          [$uodtyghxmi, $ymcmycrwbw]
+          [$ymcmycrwbw, $uodtyghxmi]
         );
-      export const $uodtyghxmi = ($ymcmycrwbw) =>
-        __$(
+      }
+      export function $uodtyghxmi($ymcmycrwbw) {
+        return __$(
           "$uodtyghxmi",
           (result) => {
             return {
-              dispose: $ymcmycrwbw,
+              dispose: $ymcmycrwbw(),
             };
           },
           [$ymcmycrwbw]
         );
-      export const $ymcmycrwbw = __$("$ymcmycrwbw", function () {
-        // dispose
-      });
-      export const App = App$flninsi($uodtyghxmi, $ymcmycrwbw);
+      }
+      export function $ymcmycrwbw() {
+        return __$("$ymcmycrwbw", function () {
+          // dispose
+        });
+      }
+      export const App = App$flninsi($ymcmycrwbw, $uodtyghxmi);
       `;
 
     assertTransform(code, expected);
   });
 
-  it('delay####', () => {
+  it('delay', () => {
     const code = `
       export function App(value, ts = 1000) {
         return new Promise((resolve, reject) => {
@@ -360,37 +397,40 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      export const App$lsbjykd = ($mgwbwxdhnh, $weemnbmmcf) =>
-        __$(
+      export function App$lsbjykd($weemnbmmcf, $mgwbwxdhnh) {
+        return __$(
           "App$lsbjykd",
           function App(value, ts = 1000) {
-            return new Promise($mgwbwxdhnh(ts, $weemnbmmcf, value));
+            return new Promise($mgwbwxdhnh(ts, value, $weemnbmmcf));
           },
-          [$mgwbwxdhnh, $weemnbmmcf]
+          [$weemnbmmcf, $mgwbwxdhnh]
         );
-      export const $mgwbwxdhnh = (ts, $weemnbmmcf, value) =>
-        __$(
+      }
+      export function $mgwbwxdhnh(ts, value, $weemnbmmcf) {
+        return __$(
           "$mgwbwxdhnh",
           (resolve, reject) => {
             setTimeout($weemnbmmcf(resolve, value), ts);
           },
-          [ts, $weemnbmmcf, value]
+          [ts, value, $weemnbmmcf]
         );
-      export const $weemnbmmcf = (resolve, value) =>
-        __$(
+      }
+      export function $weemnbmmcf(resolve, value) {
+        return __$(
           "$weemnbmmcf",
           function () {
             resolve(value);
           },
           [resolve, value]
         );
-      export const App = App$lsbjykd($mgwbwxdhnh, $weemnbmmcf);
+      }
+      export const App = App$lsbjykd($weemnbmmcf, $mgwbwxdhnh);
     `;
 
     assertTransform(code, expected);
   });
 
-  it('local function reference', () => {
+  it('local function reference####', () => {
     const code = `
       export function App(a) {
         function handler() {
@@ -402,29 +442,31 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      export const App$cjachpq = (handl$cybng) =>
-        __$(
+      export function App$cjachpq(handl$cybng) {
+        return __$(
           "App$cjachpq",
           function App(a) {
-            return { a: handl$cybng(a) };
+            return { a: handler };
           },
           [handl$cybng]
         );
-      export const handl$cybng = (a) =>
-        __$(
+      }
+      export function handl$cybng(a) {
+        return __$(
           "handl$cybng",
           function handler() {
             console.log(a);
           },
           [a]
         );
+      }
       export const App = App$cjachpq(handl$cybng);
     `;
 
     assertTransform(code, expected);
   });
 
-  it('export default function declaration####', () => {
+  it('export default function declaration', () => {
     const code = `
       export default function App() {
         return function Component() {}
@@ -432,17 +474,21 @@ describe('export declarations', () => {
     `;
 
     const expected = `
-      export const App$fkfwtdi = (Compo$omooc) =>
-        __$(
+      export function App$fkfwtdi(Compo$omooc) {
+        return __$(
           "App$fkfwtdi",
           function App() {
-            return Compo$omooc;
+            return Compo$omooc();
           },
           [Compo$omooc]
         );
-      export const Compo$omooc = __$("Compo$omooc", function Component() {});
+      }
+      export function Compo$omooc() {
+        return __$("Compo$omooc", function Component() {});
+      }
       const App = App$fkfwtdi(Compo$omooc);
       export default App;
+    
     `;
     assertTransform(code, expected);
   });
@@ -459,23 +505,25 @@ describe('export declarations', () => {
 
     const expected = `
       const jsx = null;
-      export const App$juxkhef = (Compo$qluqm, jsx) =>
-        __$(
+      export function App$juxkhef(jsx, Compo$qluqm) {
+        return __$(
           "App$juxkhef",
           function App() {
             return Compo$qluqm(jsx);
           },
-          [Compo$qluqm, jsx]
+          [jsx, Compo$qluqm]
         );
-      export const Compo$qluqm = (jsx) =>
-        __$(
+      }
+      export function Compo$qluqm(jsx) {
+        return __$(
           "Compo$qluqm",
           function Component() {
             return jsx;
           },
           [jsx]
         );
-      const App = App$juxkhef(Compo$qluqm, jsx);
+      }
+      const App = App$juxkhef(jsx, Compo$qluqm);
       export default App;
     `;
     assertTransform(code, expected);

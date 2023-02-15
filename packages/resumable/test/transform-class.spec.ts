@@ -14,17 +14,20 @@ describe('transform classes', () => {
       }
       `;
     const expected = `
-      export const State$qeyou = __$("State$qeyou", class State {});
-      export const State = State$qeyou;
+      export function State$qeyou() {
+        return __$("State$qeyou", class State {});
+      }
+      export const State = State$qeyou();
       
-      export const App$fkuxmnc = (State) =>
-        __$(
+      export function App$fkuxmnc(State$qeyou) {
+        return __$(
           "App$fkuxmnc",
           function App() {
-            return new State();
+            return new (State$qeyou())();
           },
-          [State]
+          [State$qeyou]
         );
+      }
       export const App = App$fkuxmnc(State$qeyou);
       `;
     assertTransform(code, expected);
@@ -39,15 +42,18 @@ describe('transform classes', () => {
       }
       `;
     const expected = `
-      export const App$bloxyvh = (State$wyjkw) =>
-        __$(
+      export function App$bloxyvh(State$wyjkw) {
+        return __$(
           "App$bloxyvh",
           function App() {
-            return new State$wyjkw();
+            return new (State$wyjkw())();
           },
           [State$wyjkw]
         );
-      export const State$wyjkw = __$("State$wyjkw", class State {});
+      }
+      export function State$wyjkw() {
+        return __$("State$wyjkw", class State {});
+      }
       export const App = App$bloxyvh(State$wyjkw);
     `;
     assertTransform(code, expected);
@@ -66,8 +72,8 @@ describe('transform classes', () => {
       }
       `;
     const expected = `
-      export const App$jqronbf = (State$cpdlo) =>
-        __$(
+      export function App$jqronbf(State$cpdlo) {
+        return __$(
           "App$jqronbf",
           function App() {
             const a = 1;
@@ -76,8 +82,9 @@ describe('transform classes', () => {
           },
           [State$cpdlo]
         );
-      export const State$cpdlo = (a) =>
-        __$(
+      }
+      export function State$cpdlo(a) {
+        return __$(
           "State$cpdlo",
           class State {
             constructor() {
@@ -86,6 +93,7 @@ describe('transform classes', () => {
           },
           [a]
         );
+      }
       export const App = App$jqronbf(State$cpdlo);
       `;
     assertTransform(code, expected);
@@ -100,15 +108,17 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const State$pvvqe = __$(
-        "State$pvvqe",
-        class State {
-          constructor() {
-            console.log(this);
+      export function State$pvvqe() {
+        return __$(
+          "State$pvvqe",
+          class State {
+            constructor() {
+              console.log(this);
+            }
           }
-        }
-      );
-      export const State = State$pvvqe;  
+        );
+      }
+      export const State = State$pvvqe();
     `;
     assertTransform(code, expected);
   });
@@ -122,22 +132,24 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const State$cijbj = ($yikjuqullw) =>
-        __$(
+      export function State$cijbj($yikjuqullw) {
+        return __$(
           "State$cijbj",
           class State {
             arrow = $yikjuqullw(this);
           },
           [$yikjuqullw]
         );
-      export const $yikjuqullw = (this_36) =>
-        __$(
+      }
+      export function $yikjuqullw(this_44) {
+        return __$(
           "$yikjuqullw",
           () => {
-            return this_36;
+            return this_44;
           },
-          [this_36]
+          [this_44]
         );
+      }
       export const State = State$cijbj($yikjuqullw);
     `;
     assertTransform(code, expected);
@@ -152,17 +164,20 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const State$eurgi = ($vdkkvnuikr) =>
-        __$(
+      export function State$eurgi($vdkkvnuikr) {
+        return __$(
           "State$eurgi",
           class State {
-            method = $vdkkvnuikr;
+            method = $vdkkvnuikr();
           },
           [$vdkkvnuikr]
         );
-      export const $vdkkvnuikr = __$("$vdkkvnuikr", function () {
-        return this;
-      });
+      }
+      export function $vdkkvnuikr() {
+        return __$("$vdkkvnuikr", function () {
+          return this;
+        });
+      }
       export const State = State$eurgi($vdkkvnuikr);
     `;
     assertTransform(code, expected);
@@ -177,15 +192,17 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const State$cuurb = __$(
-        "State$cuurb",
-        class State {
-          get property() {
-            return this;
+      export function State$cuurb() {
+        return __$(
+          "State$cuurb",
+          class State {
+            get property() {
+              return this;
+            }
           }
-        }
-      );
-      export const State = State$cuurb;
+        );
+      }
+      export const State = State$cuurb();
     `;
     assertTransform(code, expected);
   });
@@ -202,26 +219,29 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const State$qeyou = __$("State$qeyou", class State {});
-      export const State = State$qeyou;
+      export function State$qeyou() {
+        return __$("State$qeyou", class State {});
+      }
+      export const State = State$qeyou();
       
-      export const Compo$dbrtk = (State) =>
-        __$(
+      export function Compo$dbrtk(State$qeyou) {
+        return __$(
           "Compo$dbrtk",
           function Component() {
-            return State;
+            return State$qeyou();
           },
-          [State]
+          [State$qeyou]
         );
-      export const App$saxjqbc = (Compo$dbrtk) =>
-        __$(
+      }
+      export function App$saxjqbc(State$qeyou, Compo$dbrtk) {
+        return __$(
           "App$saxjqbc",
           function App() {
             return Compo$dbrtk(State$qeyou);
           },
-          [Compo$dbrtk]
+          [State$qeyou, Compo$dbrtk]
         );
-    
+      } 
     `;
     assertTransform(code, expected);
   });
@@ -238,8 +258,8 @@ describe('transform classes', () => {
     `;
 
     const expected = `
-      export const State$gfoml = ($muvrivprxw) =>
-        __$(
+      export function State$gfoml($muvrivprxw) {
+        return __$(
           "State$gfoml",
           class State {
             constructor() {
@@ -248,14 +268,16 @@ describe('transform classes', () => {
           },
           [$muvrivprxw]
         );
-      export const $muvrivprxw = (this_62) =>
-        __$(
+      }
+      export function $muvrivprxw(this_75) {
+        return __$(
           "$muvrivprxw",
           () => {
-            return this_62;
+            return this_75;
           },
-          [this_62]
+          [this_75]
         );
+      }
       export const State = State$gfoml($muvrivprxw);
     `;
 
@@ -266,7 +288,7 @@ describe('transform classes', () => {
     const code = `
       export class JsxElement {
         setProp() {
-          call(() => [this]);
+          call(() => (this));
 
           return this;
         }
@@ -274,27 +296,30 @@ describe('transform classes', () => {
     `;
 
     const expected = `
-      export const JsxEl$bifgf = ($chkkxupfxh, $apcqpvrxsr) =>
-        __$(
-          "JsxEl$bifgf",
+      export function JsxEl$cifgf($aucqpvexsr, $cpkkxugfxh) {
+        return __$(
+          "JsxEl$cifgf",
           class JsxElement {
-            setProp = $chkkxupfxh($apcqpvrxsr);
+            setProp = $cpkkxugfxh($aucqpvexsr);
           },
-          [$chkkxupfxh, $apcqpvrxsr]
+          [$aucqpvexsr, $cpkkxugfxh]
         );
-      export const $chkkxupfxh = ($apcqpvrxsr) =>
-        __$(
-          "$chkkxupfxh",
+      }
+      export function $cpkkxugfxh($aucqpvexsr) {
+        return __$(
+          "$cpkkxugfxh",
           function () {
-            call($apcqpvrxsr(this));
+            call($aucqpvexsr(this));
       
             return this;
           },
-          [$apcqpvrxsr]
+          [$aucqpvexsr]
         );
-      export const $apcqpvrxsr = (this_63) =>
-        __$("$apcqpvrxsr", () => [this_63], [this_63]);
-      export const JsxElement = JsxEl$bifgf($chkkxupfxh, $apcqpvrxsr);
+      }
+      export function $aucqpvexsr(this_68) {
+        return __$("$aucqpvexsr", () => this_68, [this_68]);
+      }
+      export const JsxElement = JsxEl$cifgf($aucqpvexsr, $cpkkxugfxh);
       `;
 
     assertTransform(code, expected);
@@ -308,15 +333,18 @@ describe('transform classes', () => {
         }
       `;
     const expected = `
-      export const App$fpfbanx = ($nofovriccc) =>
-        __$(
+      export function App$fpfbanx($nofovriccc) {
+        return __$(
           "App$fpfbanx",
           class App {
-            method = $nofovriccc;
+            method = $nofovriccc();
           },
           [$nofovriccc]
         );
-      export const $nofovriccc = __$("$nofovriccc", async function () {});
+      }
+      export function $nofovriccc() {
+        return __$("$nofovriccc", async function () {});
+      }
       export const App = App$fpfbanx($nofovriccc);
     `;
     assertTransform(code, expected);
@@ -330,15 +358,18 @@ describe('transform classes', () => {
         }
       `;
     const expected = `
-      export const App$naxpyxf = ($mlepswnddd) =>
-        __$(
+      export function App$naxpyxf($mlepswnddd) {
+        return __$(
           "App$naxpyxf",
           class App {
-            static method = $mlepswnddd;
+            static method = $mlepswnddd();
           },
           [$mlepswnddd]
         );
-      export const $mlepswnddd = __$("$mlepswnddd", function () {});
+      }
+      export function $mlepswnddd() {
+        return __$("$mlepswnddd", function () {});
+      }
       export const App = App$naxpyxf($mlepswnddd);
     `;
     assertTransform(code, expected);
@@ -352,15 +383,18 @@ describe('transform classes', () => {
       }
     `;
     const expected = `
-      export const App$abyijko = ($feqseystgo) =>
-        __$(
+      export function App$abyijko($feqseystgo) {
+        return __$(
           "App$abyijko",
           class App {
-            static prop = $feqseystgo;
+            static prop = $feqseystgo();
           },
           [$feqseystgo]
         );
-      export const $feqseystgo = __$("$feqseystgo", function () {});
+      }
+      export function $feqseystgo() {
+        return __$("$feqseystgo", function () {});
+      }
       export const App = App$abyijko($feqseystgo);
     `;
     assertTransform(code, expected);
@@ -374,11 +408,16 @@ describe('transform classes', () => {
       }
       `;
     const expected = `
-      export const $ayixiyyyyy = __$("$ayixiyyyyy", async function () {});
+      export function $ayixiyyyyy() {
+        return __$("$ayixiyyyyy", async function () {});
+      }
       export const App = {
-        prop: $ayixiyyyyy,
+        prop: $ayixiyyyyy(),
       };
+    
     `;
     assertTransform(code, expected);
   });
 });
+
+function __$(n: string, fn: any, args?: any[]) {}
