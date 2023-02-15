@@ -1,7 +1,8 @@
-﻿import { Node, Pattern } from 'estree';
+﻿import { Pattern } from 'estree';
+import { ASTNode } from '../ast-node';
 
 export function variableFromPatterns(patterns: Pattern[]) {
-  const vars: [string, Node][] = [];
+  const vars: [string, ASTNode][] = [];
   const stack: Pattern[] = [...patterns];
   while (stack.length) {
     const pat = stack.pop()!;

@@ -53,6 +53,9 @@ export function parse(code: string, filter: (name: string) => boolean) {
           this.skip();
         }
         return;
+      } else if (node.type === 'ReturnStatement') {
+        const returnScope = new Scope(rootStart, node, false, scope);
+        scopes.push(returnScope);
       } else if (
         node.type === 'ImportDeclaration' ||
         node.type === 'ExportAllDeclaration'
@@ -71,7 +74,7 @@ export function parse(code: string, filter: (name: string) => boolean) {
         scopes.push(classScope);
 
         if (node.id) {
-          scope.declarations.set(node.id.name, node.id.name);
+          scope.declarations.set(node.id.name, node);
           skipEnter.set(node.id, 'deep');
           if (filter(node.id.name)) {
             const alias = __alias(code, node, scope.rootStart);
@@ -93,41 +96,41 @@ export function parse(code: string, filter: (name: string) => boolean) {
 
         const memberScope = new Scope(rootStart, node, true, scope);
         scopes.push(memberScope);
-      } else if (
-        node.type === 'FunctionDeclaration' ||
-        node.type === 'FunctionExpression' ||
-        node.type === 'ArrowFunctionExpression'
-      ) {
-        const funcScope = new Scope(
-          rootStart,
-          node,
-          node.type !== 'ArrowFunctionExpression',
-          scope
-        );
-        for (const [v, _] of variableFromPatterns(node.params)) {
-          funcScope.declarations.set(v, v);
+      } else if (node.type === 'ArrowFunctionExpression') {
+        const funcScope = new Scope(rootStart, node, false, scope);
+        for (const [v, p] of variableFromPatterns(node.params)) {
+          funcScope.declarations.set(v, p);
         }
         scopes.push(funcScope);
 
         for (const p of node.params) skipEnter.set(p, 'deep');
-        if (
-          node.type === 'FunctionDeclaration' ||
-          node.type === 'FunctionExpression'
-        ) {
-          if (node.id) skipEnter.set(node.id!, 'deep');
-          if (node.id) scope.declarations.set(node.id.name, node.id.name);
+        const alias = __alias(code, node, rootStart);
+        scope.exports.set(alias, new Closure(alias, parent, funcScope));
+      } else if (
+        node.type === 'FunctionDeclaration' ||
+        node.type === 'FunctionExpression'
+      ) {
+        const funcScope = new Scope(rootStart, node, true, scope);
+        for (const [v, p] of variableFromPatterns(node.params)) {
+          funcScope.declarations.set(v, p);
+        }
+        scopes.push(funcScope);
 
-          if (parent.type !== 'MethodDefinition' || parent.kind !== 'get') {
-            const alias = __alias(code, node, rootStart);
-            const funName = node.id?.name ?? alias;
+        for (const p of node.params) skipEnter.set(p, 'deep');
 
-            if (filter(funName)) {
-              scope.exports.set(funName, new Closure(alias, parent, funcScope));
-            }
-          }
-        } else if (node.type === 'ArrowFunctionExpression') {
+        if (node.id) {
+          skipEnter.set(node.id!, 'deep');
+          scope.declarations.set(node.id.name, node);
+          funcScope.declarations.set(node.id.name, node);
+        }
+
+        if (parent.type !== 'MethodDefinition' || parent.kind !== 'get') {
           const alias = __alias(code, node, rootStart);
-          scope.exports.set(alias, new Closure(alias, parent, funcScope));
+          const funName = node.id?.name ?? alias;
+
+          if (filter(funName)) {
+            scope.exports.set(funName, new Closure(alias, parent, funcScope));
+          }
         }
       } else if (node.type === 'MemberExpression') {
         skipEnter.set(node.property!, 'deep');
@@ -139,8 +142,8 @@ export function parse(code: string, filter: (name: string) => boolean) {
       } else if (node.type === 'VariableDeclaration') {
         for (const declarator of node.declarations) {
           skipEnter.set(declarator.id, 'deep');
-          for (const [v, _] of variableFromPatterns([declarator.id])) {
-            scope.declarations.set(v, v);
+          for (const [v, p] of variableFromPatterns([declarator.id])) {
+            scope.declarations.set(v, p);
           }
         }
       } else if (node.type === 'Identifier') {

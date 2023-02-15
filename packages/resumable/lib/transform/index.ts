@@ -74,6 +74,10 @@ function getBindings(closure: Closure, stack = new Set()) {
   }
   stack.add(closure);
 
+  for (const [n, cl] of closure.scope.exports) {
+    bindings.set(cl.exportName, cl);
+  }
+
   for (const ref of closure.scope.references) {
     if (ref instanceof Closure) {
       bindings.set(ref.exportName, ref);
@@ -105,23 +109,16 @@ function getBindings(closure: Closure, stack = new Set()) {
     }
   }
 
-  for (const [n, cl] of closure.scope.exports) {
-    bindings.set(cl.exportName, cl);
-  }
-
   return bindings;
 
-  function resolve(
-    leaf: Scope | undefined,
-    ref: string
-  ): Closure | string | null {
+  function resolve(leaf: Scope | undefined, ref: string) {
     let scope: Scope | undefined = leaf;
     while (scope) {
-      if (scope.exports.has(ref)) return scope.exports.get(ref)!;
-      if (scope.declarations.has(ref)) return scope.declarations.get(ref)!;
+      if (scope.exports.has(ref)) return true;
+      if (scope.declarations.has(ref)) return true;
       scope = scope.parent;
     }
-    return null;
+    return false;
   }
 }
 

@@ -404,19 +404,19 @@ describe('export declarations', () => {
       export function App$lsbjykd($weemnbmmcf, $mgwbwxdhnh) {
         return __$C(
           function App(value, ts = 1000) {
-            return new Promise($mgwbwxdhnh(ts, value, $weemnbmmcf));
+            return new Promise($mgwbwxdhnh($weemnbmmcf, ts, value));
           },
           "App$lsbjykd",
           [__$R("$weemnbmmcf"), __$R("$mgwbwxdhnh")]
         );
       }
-      export function $mgwbwxdhnh(ts, value, $weemnbmmcf) {
+      export function $mgwbwxdhnh($weemnbmmcf, ts, value) {
         return __$C(
           (resolve, reject) => {
             setTimeout($weemnbmmcf(resolve, value), ts);
           },
           "$mgwbwxdhnh",
-          [ts, value, __$R("$weemnbmmcf")]
+          [__$R("$weemnbmmcf"), ts, value]
         );
       }
       export function $weemnbmmcf(resolve, value) {

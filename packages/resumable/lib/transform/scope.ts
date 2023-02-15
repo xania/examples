@@ -13,7 +13,7 @@ export class Closure {
 }
 
 export class Scope {
-  public readonly declarations = new Map<string, string>();
+  public readonly declarations = new Map<string, ASTNode>();
   public readonly references: (Identifier | ThisExpression | Closure)[] = [];
   public readonly exports = new Map<string, Closure>();
   public readonly children: Scope[] = [];
@@ -165,32 +165,6 @@ export class Scope {
   // }
 }
 
-function resolveVarScope(
-  leaf: Scope,
-  ref: string
-): readonly [Scope, string] | readonly [null, null] {
-  let scope: Scope | undefined = leaf;
-  while (scope) {
-    if (scope.declarations.has(ref))
-      return [scope, scope.declarations.get(ref)!] as const;
-    if (scope.exports.has(ref))
-      return [scope, scope.exports.get(ref)!.exportName] as const;
-    scope = scope.parent;
-  }
-  return [null, null];
-}
-function resolveThisScope(
-  leaf: Scope
-): readonly [Scope, string] | readonly [null, null] {
-  let scope: Scope | undefined = leaf;
-  while (scope) {
-    if (scope.thisable) return [scope, 'this_' + scope.owner.start] as const;
-    scope = scope.parent;
-  }
-
-  return [null, null];
-}
-
 export class ScopeBinding {
   constructor(
     public param: string,
@@ -205,20 +179,4 @@ export class ScopeBinding {
       return this.dep;
     }
   }
-}
-
-function traverseClosures(scope: Scope) {
-  const closures: Closure[] = [];
-
-  const stack: Scope[] = [scope];
-  while (stack.length) {
-    const curr = stack.pop()!;
-    stack.push(...curr.children);
-
-    for (const [_, cl] of curr.exports) {
-      closures.push(cl);
-    }
-  }
-
-  return closures;
 }

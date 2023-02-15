@@ -20,6 +20,7 @@
   Program,
   Property,
   PropertyDefinition,
+  ReturnStatement,
   SpreadElement,
   ThisExpression,
   VariableDeclarator,
@@ -46,4 +47,5 @@ export type ASTNode =
   | WhileStatement
   | ThisExpression
   | PrivateIdentifier
-  | ExportAllDeclaration;
+  | ExportAllDeclaration
+  | ReturnStatement;
