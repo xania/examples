@@ -1,5 +1,5 @@
 ﻿import { jsx } from "../packages/view/index";
-import { State } from "../packages/state";
+import { State } from "../packages/state/lib/index";
 import { Layout } from "./Layout";
 // // import { Layout } from "./Layout";
 

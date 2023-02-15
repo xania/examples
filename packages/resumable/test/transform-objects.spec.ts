@@ -12,7 +12,7 @@ describe('object expressions', () => {
       `;
     const expected = `
       export function $edvqpvyffl() {
-        return __$("$edvqpvyffl", () => {});
+        return __$C(() => {}, "$edvqpvyffl");
       }
       export const app = {
         arrow: $edvqpvyffl(),
@@ -29,7 +29,7 @@ describe('object expressions', () => {
       `;
     const expected = `
       export function $nqwobvedvq() {
-        return __$("$nqwobvedvq", async () => {});
+        return __$C(async () => {}, "$nqwobvedvq");
       }
       export const app = {
         arrow: $nqwobvedvq(),

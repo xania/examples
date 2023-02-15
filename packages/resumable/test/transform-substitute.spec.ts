@@ -13,16 +13,18 @@ describe('substitute func reference', () => {
       `;
     const expected = `
       export function App$ncsfemd(handl$omttt) {
-        return __$(
-          "App$ncsfemd",
+        return __$C(
           function App() {
-            return handl$omttt()();
+            const handler = handl$omttt();
+      
+            return handler();
           },
-          [handl$omttt]
+          "App$ncsfemd",
+          [__$R("handl$omttt")]
         );
       }
       export function handl$omttt() {
-        return __$("handl$omttt", function handler() {});
+        return __$C(function handler() {}, "handl$omttt");
       }
       export const App = App$ncsfemd(handl$omttt);
       `;
@@ -42,26 +44,28 @@ describe('substitute func reference', () => {
       `;
     const expected = `
       export function App$afygqfa(setCo$slrkq, Compo$acmme) {
-        return __$(
-          "App$afygqfa",
+        return __$C(
           function App() {
-            return Compo$acmme(setCo$slrkq);
+            const setCompleted = setCo$slrkq();
+      
+            return Compo$acmme(setCompleted);
           },
-          [setCo$slrkq, Compo$acmme]
+          "App$afygqfa",
+          [__$R("setCo$slrkq"), __$R("Compo$acmme")]
         );
       }
       export function setCo$slrkq() {
-        return __$("setCo$slrkq", function setCompleted() {});
+        return __$C(function setCompleted() {}, "setCo$slrkq");
       }
-      export function Compo$acmme(setCo$slrkq) {
-        return __$(
-          "Compo$acmme",
+      export function Compo$acmme(setCompleted) {
+        return __$C(
           function Component() {
             return {
-              children: setCo$slrkq(),
+              children: setCompleted,
             };
           },
-          [setCo$slrkq]
+          "Compo$acmme",
+          [setCompleted]
         );
       }
       export const App = App$afygqfa(setCo$slrkq, Compo$acmme);
@@ -80,18 +84,20 @@ describe('substitute func reference', () => {
       `;
     const expected = `
       export function App$uidmoal(setCo$slrkq) {
-        return __$(
-          "App$uidmoal",
+        return __$C(
           function App() {
+            const setCompleted = setCo$slrkq();
+      
             for (let i = 0; i < 100; i++) {
-              return setCo$slrkq()();
+              return setCompleted();
             }
           },
-          [setCo$slrkq]
+          "App$uidmoal",
+          [__$R("setCo$slrkq")]
         );
       }
       export function setCo$slrkq() {
-        return __$("setCo$slrkq", function setCompleted() {});
+        return __$C(function setCompleted() {}, "setCo$slrkq");
       }
       export const App = App$uidmoal(setCo$slrkq);
       `;
@@ -112,36 +118,37 @@ describe('substitute func reference', () => {
       `;
     const expected = `
       export function App$qdibfod(setCo$nwlef, Compo$csvmj) {
-        return __$(
-          "App$qdibfod",
+        return __$C(
           function App() {
             const a = 1;
+            const setCompleted = setCo$nwlef(a);
       
-            return Compo$csvmj(a, setCo$nwlef);
+            return Compo$csvmj(setCompleted);
           },
-          [setCo$nwlef, Compo$csvmj]
+          "App$qdibfod",
+          [__$R("setCo$nwlef"), __$R("Compo$csvmj")]
         );
       }
       export function setCo$nwlef(a) {
-        return __$(
-          "setCo$nwlef",
+        return __$C(
           function setCompleted() {
             return a;
           },
+          "setCo$nwlef",
           [a]
         );
       }
-      export function Compo$csvmj(a, setCo$nwlef) {
-        return __$(
-          "Compo$csvmj",
+      export function Compo$csvmj(setCompleted) {
+        return __$C(
           class Component {
-            setCompleted = setCo$nwlef(a);
+            setCompleted = setCompleted;
           },
-          [a, setCo$nwlef]
+          "Compo$csvmj",
+          [setCompleted]
         );
       }
       export const App = App$qdibfod(setCo$nwlef, Compo$csvmj);
-      `;
+    `;
     assertTransform(code, expected);
   });
 });

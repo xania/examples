@@ -7,6 +7,7 @@
   ExportAllDeclaration,
   ExportDefaultDeclaration,
   ExportNamedDeclaration,
+  ExportSpecifier,
   Expression,
   ForStatement,
   FunctionDeclaration,
@@ -26,6 +27,7 @@
 } from 'estree';
 
 export type ASTNode =
+  | ExportSpecifier
   | Declaration
   | BlockStatement
   | Expression

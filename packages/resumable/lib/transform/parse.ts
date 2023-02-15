@@ -33,6 +33,12 @@ export function parse(code: string, filter: (name: string) => boolean) {
         rootStart = node.start;
       }
 
+      if (node.type === 'ExportNamedDeclaration') {
+        for (const s of node.specifiers) {
+          skipEnter.set(s, 'deep');
+        }
+      }
+
       // if (
       //   parent.type === 'ExportNamedDeclaration' ||
       //   parent.type === 'ExportDefaultDeclaration'
