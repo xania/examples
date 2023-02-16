@@ -1,9 +1,10 @@
 ﻿import * as acorn from 'acorn';
 import { walk } from 'estree-walker';
 import { variableFromPatterns } from './ast/var-from-patterns';
-import { Identifier, Literal, Program } from 'estree';
+import { Identifier, ImportDeclaration, Literal, Program } from 'estree';
 import { Closure, DeclarationScope, Scope } from './scope';
 import { ASTNode } from './ast-node';
+import MagicString from 'magic-string';
 
 const CSS_LANGS_RE =
   /\.(css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/;
@@ -14,7 +15,7 @@ export function parse(code: string) {
     ecmaVersion: 'latest',
   }) as Program;
 
-  const imports: Literal[] = [];
+  const imports: Import[] = [];
   const programScope = new Scope(0, ast, false);
   const scopes: (Scope | DeclarationScope)[] = [programScope];
 
@@ -55,16 +56,8 @@ export function parse(code: string) {
       } else if (node.type === 'ReturnStatement') {
         const returnScope = scope.create(rootStart, node, false);
         scopes.push(returnScope);
-      } else if (
-        node.type === 'ImportDeclaration' ||
-        node.type === 'ExportAllDeclaration'
-      ) {
-        if (CSS_LANGS_RE.test(node.source.value as string)) {
-          // magicString.remove(node.start, node.end);
-          // this.skip();
-        } else {
-          imports.push(node.source);
-        }
+      } else if (node.type === 'ImportDeclaration') {
+        imports.push(new Import(node));
       } else if (
         node.type === 'ClassDeclaration' ||
         node.type === 'ClassExpression'
@@ -132,12 +125,14 @@ export function parse(code: string) {
       } else if (node.type === 'VariableDeclaration') {
         for (const declarator of node.declarations) {
           skipEnter.set(declarator.id, 'deep');
+          const vars: string[] = [];
           for (const [v, p] of variableFromPatterns([declarator.id])) {
+            vars.push(v);
             scope.declarations.set(v, p);
           }
 
           if (scope instanceof Scope) {
-            const declScope = new DeclarationScope(node, scope);
+            const declScope = new DeclarationScope(node, vars, scope);
             scopes.push(declScope);
           }
         }
@@ -181,4 +176,37 @@ function __alias(
   const retval = baseName + '$' + String.fromCharCode(...bits);
 
   return retval;
+}
+
+export class Import {
+  public readonly vars: string[] = [];
+
+  constructor(public decl: ImportDeclaration) {
+    for (const spec of decl.specifiers) {
+      if (spec.type === 'ImportSpecifier') {
+        this.vars.push(spec.local.name);
+      }
+    }
+    // variableFromPatterns(decl.specifiers)
+  }
+
+  get source() {
+    return this.decl.source.value;
+  }
+
+  update(magicString: MagicString, names: string[]) {
+    const { decl } = this;
+
+    const source = decl.source;
+    if (!CSS_LANGS_RE.test(source.value as string)) {
+      if (source) {
+        const match = source.raw?.match(/\.[jt]sx?/);
+        if (match) {
+          magicString.appendRight(source.start + 1, `/@resumable[${names}]`);
+        } else {
+          console.error(source);
+        }
+      }
+    }
+  }
 }

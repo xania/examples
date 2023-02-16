@@ -17,6 +17,7 @@ export class Scope {
   public readonly references: (Identifier | ThisExpression | Closure)[] = [];
   public readonly closures: Closure[] = [];
   public readonly children: Scope[] = [];
+  public readonly mappings = new Map<string, Scope['references']>();
 
   constructor(
     public rootStart: number,
@@ -85,7 +86,11 @@ export class DeclarationScope {
   public readonly closures: Scope['closures'];
   public readonly references: Scope['references'];
 
-  constructor(public owner: ASTNode, public scope: Scope) {
+  constructor(
+    public owner: ASTNode,
+    public vars: string[],
+    public scope: Scope
+  ) {
     this.rootStart = scope.rootStart;
     this.declarations = scope.declarations;
     this.closures = scope.closures;
@@ -96,5 +101,9 @@ export class DeclarationScope {
     return this.scope.create(rootStart, node, thisable);
   }
 
-  mergeChildren() {}
+  mergeChildren() {
+    for (const v of this.vars) {
+      this.scope.mappings.set(v, this.references);
+    }
+  }
 }

@@ -3,6 +3,7 @@ import type { SourceMap } from 'rollup';
 
 import type { ViteDevServer } from 'vite';
 import { transform } from '../../resumable/lib/transform';
+import { Import } from '../../resumable/lib/transform/parse';
 import { Closure, Scope } from '../../resumable/lib/transform/scope';
 import { _getCombinedSourcemap } from './combine-sourcemaps';
 /* use page module because we want to transform source code to resumable script just for the entry file and it's dependencies
@@ -272,7 +273,7 @@ function genSourceMapUrl(map: any) {
 
 // }
 
-function selectEntryClosures(rootScope: Scope): Closure[] {
+function selectEntryClosures(rootScope: Scope): readonly [Closure[], string[]] {
   const stack: Scope[] = [rootScope];
 
   const rootClosures: Closure[] = [];
@@ -285,7 +286,8 @@ function selectEntryClosures(rootScope: Scope): Closure[] {
     }
   }
 
-  const retval: Closure[] = [];
+  const retval = new Set<Closure>();
+  const unresolved = new Set<string>();
   for (let i = 0, len = rootClosures.length; i < len; i++) {
     const rootClosure = rootClosures[i];
     for (const child of rootClosure.scope.children) {
@@ -293,11 +295,13 @@ function selectEntryClosures(rootScope: Scope): Closure[] {
         const returnScope = child;
         for (const ref of returnScope.references) {
           if (ref instanceof Closure) {
-            retval.push(ref);
+            retval.add(ref);
           } else if (ref.type === 'Identifier') {
-            const closure = resolveClosure(returnScope, ref.name);
-            if (closure && !retval.includes(closure)) {
-              retval.push(closure);
+            const closure = resolve(returnScope, ref.name);
+            if (closure) {
+              retval.add(closure);
+            } else {
+              unresolved.add(ref.name);
             }
           }
         }
@@ -305,19 +309,18 @@ function selectEntryClosures(rootScope: Scope): Closure[] {
     }
   }
 
-  return retval;
-}
+  function resolve(leaf: Scope, name: string) {
+    let scope: Scope | undefined = leaf;
+    while (scope) {
+      if (scope.declarations.has(name)) {
+        const decl = scope.declarations.get(name)!;
+        return scope.closures.find((cl) => cl.scope.owner === decl);
+      }
 
-function resolveClosure(leaf: Scope, name: string) {
-  let scope: Scope | undefined = leaf;
-  while (scope) {
-    if (scope.declarations.has(name)) {
-      const decl = scope.declarations.get(name)!;
-      return scope.closures.find((cl) => cl.scope.owner === decl);
+      scope = scope.parent;
     }
-
-    scope = scope.parent;
+    return null;
   }
 
-  return null;
+  return [[...retval], [...unresolved]];
 }
