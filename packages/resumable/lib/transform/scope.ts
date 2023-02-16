@@ -15,9 +15,8 @@ export class Closure {
 export class Scope {
   public readonly declarations = new Map<string, ASTNode>();
   public readonly references: (Identifier | ThisExpression | Closure)[] = [];
-  public readonly exports = new Map<string, Closure>();
+  public readonly closures: Closure[] = [];
   public readonly children: Scope[] = [];
-  public readonly imports: Literal[] = [];
 
   constructor(
     public rootStart: number,
@@ -30,23 +29,18 @@ export class Scope {
     }
   }
 
-  mergeChildren() {
-    // const exportedScopes = new Set<Scope>();
-    // for (const [, closure] of this.exports) {
-    //   exportedScopes.add(closure.scope);
-    // }
+  create(rootStart: number, node: ASTNode, thisable: boolean) {
+    return new Scope(rootStart, node, thisable, this);
+  }
 
+  mergeChildren() {
     for (const child of this.children) {
       // if (!exportedScopes.has(child)) {
       for (const ref of child.references) {
         if (ref instanceof Closure) {
           this.references.push(ref);
         } else if (ref.type === 'Identifier') {
-          if (child.exports.has(ref.name)) {
-            // const cl = child.exports.get(ref.name)!;
-            // cl.references.push(ref);
-            // this.references.push(cl);
-          } else if (!child.declarations.has(ref.name)) {
+          if (!child.declarations.has(ref.name)) {
             let scope: Scope | undefined = this;
             while (scope) {
               if (scope.declarations.has(ref.name)) {
@@ -62,107 +56,11 @@ export class Scope {
           }
         }
       }
-      for (const [cname, closure] of child.exports) {
+      for (const closure of child.closures) {
         this.references.push(closure);
       }
     }
-
-    // for (const [_, closure] of this.exports) {
-    //   for (const ref of closure.scope.references) {
-    //     if (ref instanceof Closure) {
-    //       closure.bindings.set(ref.exportName, ref);
-    //     } else if (ref.type === 'Identifier') {
-
-    //       if (!closure.scope.declarations.has(ref.name)) {
-    //         closure.bindings.set(ref.name, ref.name);
-    //       }
-    //     } else if (ref.type === 'ThisExpression') {
-    //       if (!closure.scope.thisable) {
-    //         closure.bindings.set('this_param', 'this_arg');
-    //       }
-    //     }
-    //   }
-    // }
-
-    // for (const [closureName, closure] of this.exports) {
-    //   for (const ref of this.references) {
-    //     if (ref.type === 'Identifier') {
-    //       if (ref.name === closureName) {
-    //         closure.references.push(ref);
-    //       }
-    //     }
-    //   }
-
-    //   for (const ref of closure.scope.references) {
-    //     if (ref.type === 'Identifier') {
-    //       if (this.exports.has(ref.name)) {
-    //         const decl = this.exports.get(ref.name)!;
-    //         closure.bindings.set(decl.exportName, decl);
-    //       } else if (this.declarations.has(ref.name)) {
-    //         closure.bindings.set(ref.name, ref.name);
-    //       }
-    //     } else if (!closure.scope.thisable) {
-    //       closure.bindings.set('this_' + closure.parent.start, 'this');
-    //       closure.references.push(ref);
-    //     }
-    //   }
-
-    //   // for (const ref of closure.scope.references) {
-    //   //   if (ref.type === 'Identifier') {
-    //   //     const [refScope] = closure.scope.resolve(ref);
-    //   //     if (refScope !== null) {
-    //   //       if (refScope !== closure.scope) {
-    //   //         // if (refScope.exports.has(ref.name)) {
-    //   //         //   const decl = refScope.exports.get(ref.name)!;
-    //   //         //   closure.bindings.set(decl.exportName, decl);
-    //   //         // }
-    //   //         const decl =
-    //   //           refScope.exports.get(ref.name) ||
-    //   //           refScope.declarations.get(ref.name);
-    //   //         if (!decl) {
-    //   //           throw Error(`declaration ${ref.name} not found in owned scope`);
-    //   //         }
-    //   //         closure.bindings.set(ref.name, decl);
-    //   //       } else if (refScope !== this) {
-    //   //         // bindingParams.add(ref.name);
-    //   //       }
-    //   //     }
-    //   //   } else if (!closure.scope.thisable) {
-    //   //     closure.bindings.set('this_' + closure.parent.start, 'this');
-    //   //     closure.references.push(ref);
-    //   //   }
-    //   // }
-
-    //   // merge bindings of the current closure with the bindings of the child closures
-    //   for (const cl of traverseClosures(closure.scope)) {
-    //     closure.bindings.set(cl.exportName, cl.exportName);
-    //     for (const [param, arg] of cl.bindings) {
-    //       const stack: typeof arg[] = [arg];
-    //       while (stack.length) {
-    //         const curr = stack.pop()!;
-    //         if (curr instanceof Closure) {
-    //           stack.push(...curr.bindings.values());
-    //         } else {
-    //           const [paramScope] = closure.scope.resolve(curr);
-    //           if (paramScope !== null && paramScope !== closure.scope) {
-    //             closure.bindings.set(curr, curr);
-    //           }
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
   }
-
-  // resolve(
-  //   ref: this['references'][number] | string
-  // ): readonly [Scope, string] | readonly [null, null] {
-  //   if (typeof ref === 'string') {
-  //     return resolveVarScope(this, ref);
-  //   } else if (ref.type === 'Identifier') {
-  //     return resolveVarScope(this, ref.name);
-  //   } else return resolveThisScope(this);
-  // }
 }
 
 export class ScopeBinding {
@@ -179,4 +77,24 @@ export class ScopeBinding {
       return this.dep;
     }
   }
+}
+
+export class DeclarationScope {
+  public readonly rootStart: Scope['rootStart'];
+  public readonly declarations: Scope['declarations'];
+  public readonly closures: Scope['closures'];
+  public readonly references: Scope['references'];
+
+  constructor(public owner: ASTNode, public scope: Scope) {
+    this.rootStart = scope.rootStart;
+    this.declarations = scope.declarations;
+    this.closures = scope.closures;
+    this.references = [];
+  }
+
+  create(rootStart: number, node: ASTNode, thisable: boolean) {
+    return this.scope.create(rootStart, node, thisable);
+  }
+
+  mergeChildren() {}
 }

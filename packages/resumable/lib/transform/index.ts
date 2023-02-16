@@ -1,4 +1,5 @@
-﻿import MagicString from 'magic-string';
+﻿import { Literal, Program } from 'estree';
+import MagicString from 'magic-string';
 import { parse } from './parse';
 import { Closure, Scope } from './scope';
 
@@ -15,28 +16,29 @@ function __$R(name) { return {__ref: name} }
 `;
 
 export type TransfromOptions = {
-  // entry: string[];
-  // ssr?: boolean;
   includeHelper?: boolean;
-  filter?(name: string): boolean;
+  selectClosures?(root: Scope, program?: Program): Closure[];
 };
 
 export function transform(
   code: string,
   opts: TransfromOptions
 ): { code: string; map: any } | undefined {
-  const rootScope = parse(code, opts.filter || (() => true));
+  const [rootScope, program, imports] = parse(code);
   const magicString = new MagicString(code);
-  const stack = [rootScope];
-  while (stack.length) {
-    const scope = stack.pop()!;
-    stack.push(...scope.children);
 
-    updateImports(magicString, scope);
+  updateImports(magicString, imports);
 
-    for (const [cname, cl] of scope.exports) {
-      exportClosure(magicString, cname, cl);
-    }
+  const closures =
+    opts.selectClosures instanceof Function
+      ? opts.selectClosures(rootScope, program)
+      : selectAllClosures(rootScope);
+
+  function hasClosure(cl: Closure) {
+    return closures.includes(cl);
+  }
+  for (const closure of closures) {
+    exportClosure(magicString, closure, hasClosure);
   }
 
   if (opts.includeHelper === undefined || opts.includeHelper === true) {
@@ -49,12 +51,8 @@ export function transform(
   };
 }
 
-// function throwNever(message: string, type: never) {
-//   throw Error(message + type);
-// }
-
-function updateImports(magicString: MagicString, scope: Scope) {
-  for (const source of scope.imports) {
+function updateImports(magicString: MagicString, imports: Literal[]) {
+  for (const source of imports) {
     if (source) {
       const match = source.raw?.match(/\.[jt]sx?/);
       if (match) {
@@ -66,7 +64,11 @@ function updateImports(magicString: MagicString, scope: Scope) {
   }
 }
 
-function getBindings(closure: Closure, stack = new Set()) {
+function getBindings(
+  closure: Closure,
+  hasClosure: (cl: Closure) => boolean,
+  stack = new Set()
+) {
   const bindings = new Map<string, string | Closure>();
 
   if (stack.has(closure)) {
@@ -74,13 +76,17 @@ function getBindings(closure: Closure, stack = new Set()) {
   }
   stack.add(closure);
 
-  for (const [n, cl] of closure.scope.exports) {
-    bindings.set(cl.exportName, cl);
+  for (const cl of closure.scope.closures) {
+    if (hasClosure(cl)) {
+      bindings.set(cl.exportName, cl);
+    }
   }
 
   for (const ref of closure.scope.references) {
     if (ref instanceof Closure) {
-      bindings.set(ref.exportName, ref);
+      if (hasClosure(ref)) {
+        bindings.set(ref.exportName, ref);
+      }
     } else if (ref.type === 'Identifier') {
       if (
         !closure.scope.declarations.has(ref.name) &&
@@ -88,22 +94,6 @@ function getBindings(closure: Closure, stack = new Set()) {
       ) {
         bindings.set(ref.name, ref.name);
       }
-      // if (
-      //   // closure.scope.exports.has(ref.name) ||
-      //   !closure.scope.declarations.has(ref.name)
-      // ) {
-      //   const decl = resolve(closure.scope, ref.name);
-      //   if (decl) {
-      //     if (decl instanceof Closure) {
-      //       for (const [n, v] of getBindings(decl, stack)) {
-      //         if (!closure.scope.declarations.has(n)) bindings.set(n, v);
-      //       }
-      //       bindings.set(decl.exportName, [ref.name, decl]);
-      //     } else {
-      //       bindings.set(ref.name, ref.name);
-      //     }
-      //   }
-      // }
     } else if (!closure.scope.thisable) {
       bindings.set('this_' + closure.scope.owner.start, 'this');
     }
@@ -114,7 +104,7 @@ function getBindings(closure: Closure, stack = new Set()) {
   function resolve(leaf: Scope | undefined, ref: string) {
     let scope: Scope | undefined = leaf;
     while (scope) {
-      if (scope.exports.has(ref)) return true;
+      // if (scope.exports.has(ref)) return true;
       if (scope.declarations.has(ref)) return true;
       scope = scope.parent;
     }
@@ -144,14 +134,7 @@ function formatBindings(
       args.push(arg);
     } else {
       deps.push(`__$R("${arg.exportName}")`);
-      // const bindings = getBindings(cl);
       args.push(arg.exportName);
-      // if (bindings.size) {
-      //   const [_, nestedArgs] = formatBindings(bindings, stack);
-      //   // inits.push(`const ${n} = ${cl.exportName}(${nestedArgs});`);
-      // } else {
-      //   // inits.push(`const ${n} = ${cl.exportName};`);
-      // }
     }
   }
 
@@ -160,12 +143,12 @@ function formatBindings(
 
 function exportClosure(
   magicString: MagicString,
-  closureName: string,
-  closure: Closure
+  closure: Closure,
+  hasClosure: (cl: Closure) => boolean
 ) {
   const { owner, rootStart } = closure.scope;
 
-  const bindings = getBindings(closure);
+  const bindings = getBindings(closure, hasClosure);
   const [params, args, deps] = formatBindings(bindings);
 
   if (owner.start !== rootStart) {
@@ -310,4 +293,19 @@ function exportClosure(
 
 function formatInit(ref: string, args: string) {
   return `(${ref}(${args}))`;
+}
+function selectAllClosures(rootScope: Scope): Closure[] {
+  const stack: Scope[] = [rootScope];
+
+  const retval: Closure[] = [];
+  while (stack.length) {
+    const scope = stack.pop()!;
+    retval.push(...scope.closures);
+
+    for (const child of scope.children) {
+      stack.push(child);
+    }
+  }
+
+  return retval;
 }

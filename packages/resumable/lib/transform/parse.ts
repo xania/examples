@@ -1,25 +1,24 @@
 ﻿import * as acorn from 'acorn';
 import { walk } from 'estree-walker';
 import { variableFromPatterns } from './ast/var-from-patterns';
-import { Identifier, Program } from 'estree';
-import { Closure, Scope } from './scope';
+import { Identifier, Literal, Program } from 'estree';
+import { Closure, DeclarationScope, Scope } from './scope';
 import { ASTNode } from './ast-node';
 
 const CSS_LANGS_RE =
   /\.(css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/;
 
-export function parse(code: string, filter: (name: string) => boolean) {
+export function parse(code: string) {
   const ast = acorn.parse(code, {
     sourceType: 'module',
     ecmaVersion: 'latest',
   }) as Program;
 
-  const rootScope = new Scope(0, ast, false);
-  const scopes = [rootScope];
+  const imports: Literal[] = [];
+  const programScope = new Scope(0, ast, false);
+  const scopes: (Scope | DeclarationScope)[] = [programScope];
 
   let rootStart = 0;
-
-  // magicString.prependLeft(exportIndex, ';');
 
   const skipEnter = new Map<ASTNode, 'deep' | 'shallow'>();
 
@@ -27,7 +26,7 @@ export function parse(code: string, filter: (name: string) => boolean) {
     enter(n, p) {
       const node = n as ASTNode;
       const parent = (p || ast) as ASTNode;
-      let scope = scopes[scopes.length - 1]!;
+      const scope = scopes[scopes.length - 1]!;
 
       if (p === ast) {
         rootStart = node.start;
@@ -54,7 +53,7 @@ export function parse(code: string, filter: (name: string) => boolean) {
         }
         return;
       } else if (node.type === 'ReturnStatement') {
-        const returnScope = new Scope(rootStart, node, false, scope);
+        const returnScope = scope.create(rootStart, node, false);
         scopes.push(returnScope);
       } else if (
         node.type === 'ImportDeclaration' ||
@@ -64,25 +63,20 @@ export function parse(code: string, filter: (name: string) => boolean) {
           // magicString.remove(node.start, node.end);
           // this.skip();
         } else {
-          scope.imports.push(node.source);
+          imports.push(node.source);
         }
       } else if (
         node.type === 'ClassDeclaration' ||
         node.type === 'ClassExpression'
       ) {
-        const classScope = new Scope(rootStart, node, true, scope);
+        const classScope = scope.create(rootStart, node, true);
         scopes.push(classScope);
 
         if (node.id) {
           scope.declarations.set(node.id.name, node);
           skipEnter.set(node.id, 'deep');
-          if (filter(node.id.name)) {
-            const alias = __alias(code, node, scope.rootStart);
-            scope.exports.set(
-              node.id.name,
-              new Closure(alias, parent, classScope)
-            );
-          }
+          const alias = __alias(code, node, scope.rootStart);
+          scope.closures.push(new Closure(alias, parent, classScope));
         }
       } else if (
         node.type === 'MethodDefinition' ||
@@ -94,10 +88,10 @@ export function parse(code: string, filter: (name: string) => boolean) {
         if (node.type === 'MethodDefinition' && node.kind === 'constructor')
           skipEnter.set(node.value, 'shallow');
 
-        const memberScope = new Scope(rootStart, node, true, scope);
+        const memberScope = scope.create(rootStart, node, true);
         scopes.push(memberScope);
       } else if (node.type === 'ArrowFunctionExpression') {
-        const funcScope = new Scope(rootStart, node, false, scope);
+        const funcScope = scope.create(rootStart, node, false);
         for (const [v, p] of variableFromPatterns(node.params)) {
           funcScope.declarations.set(v, p);
         }
@@ -105,12 +99,12 @@ export function parse(code: string, filter: (name: string) => boolean) {
 
         for (const p of node.params) skipEnter.set(p, 'deep');
         const alias = __alias(code, node, rootStart);
-        scope.exports.set(alias, new Closure(alias, parent, funcScope));
+        scope.closures.push(new Closure(alias, parent, funcScope));
       } else if (
         node.type === 'FunctionDeclaration' ||
         node.type === 'FunctionExpression'
       ) {
-        const funcScope = new Scope(rootStart, node, true, scope);
+        const funcScope = scope.create(rootStart, node, true);
         for (const [v, p] of variableFromPatterns(node.params)) {
           funcScope.declarations.set(v, p);
         }
@@ -126,11 +120,7 @@ export function parse(code: string, filter: (name: string) => boolean) {
 
         if (parent.type !== 'MethodDefinition' || parent.kind !== 'get') {
           const alias = __alias(code, node, rootStart);
-          const funName = node.id?.name ?? alias;
-
-          if (filter(funName)) {
-            scope.exports.set(funName, new Closure(alias, parent, funcScope));
-          }
+          scope.closures.push(new Closure(alias, parent, funcScope));
         }
       } else if (node.type === 'MemberExpression') {
         skipEnter.set(node.property!, 'deep');
@@ -138,12 +128,17 @@ export function parse(code: string, filter: (name: string) => boolean) {
         node.type === 'ForStatement' ||
         node.type === 'WhileStatement'
       ) {
-        scopes.push(new Scope(rootStart, node, false, scope));
+        scopes.push(scope.create(rootStart, node, false));
       } else if (node.type === 'VariableDeclaration') {
         for (const declarator of node.declarations) {
           skipEnter.set(declarator.id, 'deep');
           for (const [v, p] of variableFromPatterns([declarator.id])) {
             scope.declarations.set(v, p);
+          }
+
+          if (scope instanceof Scope) {
+            const declScope = new DeclarationScope(node, scope);
+            scopes.push(declScope);
           }
         }
       } else if (node.type === 'Identifier') {
@@ -154,14 +149,7 @@ export function parse(code: string, filter: (name: string) => boolean) {
     },
     leave(n) {
       const node = n as ASTNode;
-      // const parent = (p || ast) as ASTNode;
-      let scope = scopes[scopes.length - 1]!;
-
-      // const isRoot =
-      //   !parent ||
-      //   parent.type === 'ExportDefaultDeclaration' ||
-      //   parent.type === 'Program' ||
-      //   parent.type === 'ExportNamedDeclaration';
+      const scope = scopes[scopes.length - 1]!;
 
       if (scope.owner === node) {
         const blockScope = scopes.pop()!;
@@ -170,7 +158,7 @@ export function parse(code: string, filter: (name: string) => boolean) {
     },
   });
 
-  return rootScope;
+  return [programScope, ast, imports] as const;
 }
 
 function __alias(

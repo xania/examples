@@ -3,6 +3,7 @@ import type { SourceMap } from 'rollup';
 
 import type { ViteDevServer } from 'vite';
 import { transform } from '../../resumable/lib/transform';
+import { Closure, Scope } from '../../resumable/lib/transform/scope';
 import { _getCombinedSourcemap } from './combine-sourcemaps';
 /* use page module because we want to transform source code to resumable script just for the entry file and it's dependencies
  * We also dont want this transform to has effect when same source code is loaded
@@ -206,7 +207,9 @@ export function createLoader(server: ViteDevServer) {
       sourcemapChain.push(baseResult.map);
     }
 
-    const resumeResult = transform(baseResult.code, {});
+    const resumeResult = transform(baseResult.code, {
+      selectClosures: selectEntryClosures,
+    });
 
     if (!resumeResult) return null;
     sourcemapChain.push(resumeResult.map);
@@ -268,3 +271,53 @@ function genSourceMapUrl(map: any) {
 //     }
 
 // }
+
+function selectEntryClosures(rootScope: Scope): Closure[] {
+  const stack: Scope[] = [rootScope];
+
+  const rootClosures: Closure[] = [];
+  while (stack.length) {
+    const scope = stack.pop()!;
+    rootClosures.push(...scope.closures);
+
+    for (const child of scope.children) {
+      if (rootClosures.every((cl) => cl.scope !== child)) stack.push(child);
+    }
+  }
+
+  const retval: Closure[] = [];
+  for (let i = 0, len = rootClosures.length; i < len; i++) {
+    const rootClosure = rootClosures[i];
+    for (const child of rootClosure.scope.children) {
+      if (child.owner.type === 'ReturnStatement') {
+        const returnScope = child;
+        for (const ref of returnScope.references) {
+          if (ref instanceof Closure) {
+            retval.push(ref);
+          } else if (ref.type === 'Identifier') {
+            const closure = resolveClosure(returnScope, ref.name);
+            if (closure && !retval.includes(closure)) {
+              retval.push(closure);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return retval;
+}
+
+function resolveClosure(leaf: Scope, name: string) {
+  let scope: Scope | undefined = leaf;
+  while (scope) {
+    if (scope.declarations.has(name)) {
+      const decl = scope.declarations.get(name)!;
+      return scope.closures.find((cl) => cl.scope.owner === decl);
+    }
+
+    scope = scope.parent;
+  }
+
+  return null;
+}
