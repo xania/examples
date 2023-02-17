@@ -2,7 +2,7 @@
 
 import kleur from 'kleur';
 import { FileRouteResolver, ViewResult } from '../resumable';
-import { createLoader } from './lib/page-loader';
+import { createLoader, parseResumableUrl } from './lib/page-loader';
 
 export interface Options {
   resolvePage?(url: string): Promise<string>;
@@ -32,23 +32,27 @@ export function resumable(xn?: Options): Plugin {
 
       vite.middlewares.use(async (req, res, next) => {
         const reqUrl = req.url || '';
-
         const loader = createLoader(vite);
-        const result = await loader.loadAndTransform(reqUrl);
-        if (result) {
-          res.setHeader('Content-Type', 'application/javascript');
-          res.write(result.code);
-          res.write(result.genSourceMap());
-          res.end();
-          return;
-        }
 
-        if (req.headers.accept?.includes('text/html')) {
+        const parseResult = parseResumableUrl(reqUrl);
+        if (parseResult) {
+          const result = await loader.loadAndTransform(
+            parseResult.moduleUrl,
+            parseResult.target
+          );
+          if (result) {
+            res.setHeader('Content-Type', 'application/javascript');
+            res.write(result.code);
+            res.write(result.genSourceMap());
+            res.end();
+            return;
+          }
+        } else if (req.headers.accept?.includes('text/html')) {
           const pageUrl = await resolvePage(reqUrl);
           if (pageUrl) {
             try {
               const loader = createLoader(vite);
-              const page = await loader.loadResumableModule(pageUrl, 'server');
+              const page = await loader.loadResumableModule(pageUrl);
               if (!page) {
                 return next();
               }

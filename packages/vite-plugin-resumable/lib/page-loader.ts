@@ -14,8 +14,7 @@ const CSS_LANGS_RE =
 
 type Target = 'server' | 'client';
 
-export const SERVER_URL_RE = /\/@server\//;
-export const CLIENT_URL_RE = /\/@client\//;
+export const RESUMABLE_URL_RE = /\/@(client|server)\//;
 // export const RESUMABLE_URL_RE = /\/@resumable\[([^\]]*)\]\//;
 
 const ssrModuleExportsKey = `__vite_ssr_exports__`;
@@ -46,7 +45,7 @@ function loadModule(
   const moduleCache = new Map<string, Record<string, any>>();
 
   const loadstack: string[] = [];
-  function moduleLoader(url: string, target: Target) {
+  function moduleLoader(url: string) {
     if (loadstack.includes(url)) {
       // cyclic, return possibly non initialized module and brace for impact
       return Promise.resolve(moduleCache.get(url));
@@ -66,7 +65,7 @@ function loadModule(
     moduleCache.set(url, ssrModule);
 
     loadstack.push(url);
-    const promise = load(url, target, ssrModule);
+    const promise = load(url, 'server', ssrModule);
 
     promise.then((m) => {
       const end = loadstack.pop()!;
@@ -116,13 +115,10 @@ export function createLoader(server: ViteDevServer) {
         }
 
         if (dep.startsWith('/@resumable')) {
-          return loadResumableModule(
-            dep.substring('/@resumable'.length),
-            target
-          );
+          return loadResumableModule(dep.substring('/@resumable'.length));
         }
 
-        return loadResumableModule(unwrapId(dep), target);
+        return loadResumableModule(unwrapId(dep));
       };
       const ssrDynamicImport = (dep: string) => {
         // #3087 dynamic import vars is ignored at rewrite import path,
@@ -201,30 +197,6 @@ export function createLoader(server: ViteDevServer) {
     }
   );
 
-  function parseUrl(
-    url: string
-  ): { moduleUrl: string; target: 'server' | 'client' } | null {
-    const clientMatch = url.match(CLIENT_URL_RE);
-    if (clientMatch) {
-      return { moduleUrl: createModuleUrl(clientMatch), target: 'client' };
-    }
-    const serverMatch = url.match(SERVER_URL_RE);
-    if (serverMatch) {
-      return { moduleUrl: createModuleUrl(serverMatch), target: 'server' };
-    }
-    return null;
-
-    function createModuleUrl(match: any) {
-      const resMatchIndex = match.index || 0;
-      const resMatchLength = match[0].length || 0;
-      return (
-        url.substring(0, resMatchIndex) +
-        '/' +
-        url.substring(resMatchIndex + resMatchLength)
-      );
-    }
-  }
-
   // function parseUrl(url: string): readonly [string, Entry[]] {
   //   const resMatch = url.match(RESUMABLE_URL_RE);
 
@@ -249,13 +221,8 @@ export function createLoader(server: ViteDevServer) {
   //   return [url, []];
   // }
 
-  async function loadAndTransform(url: string, target?: Target) {
-    const parseResult = target ? { moduleUrl: url, target } : parseUrl(url);
-    if (!parseResult) return;
-
-    const resolved = await server.pluginContainer.resolveId(
-      parseResult.moduleUrl
-    );
+  async function loadAndTransform(url: string, target: Target = 'server') {
+    const resolved = await server.pluginContainer.resolveId(url);
     if (!resolved) {
       return null;
     }
@@ -271,7 +238,7 @@ export function createLoader(server: ViteDevServer) {
     }
 
     const resumeResult =
-      parseResult.target === 'server'
+      target === 'server'
         ? transformServer(baseResult.code, {})
         : transformClient(baseResult.code, {});
 
@@ -418,3 +385,27 @@ function genSourceMapUrl(map: any) {
 // export class Entry {
 //   constructor(public name: string, public body: boolean) {}
 // }
+
+export function parseResumableUrl(
+  url: string
+): { moduleUrl: string; target: 'server' | 'client' } | null {
+  const clientMatch = url.match(RESUMABLE_URL_RE);
+  if (clientMatch) {
+    return {
+      moduleUrl: createModuleUrl(clientMatch),
+      target: clientMatch[1] as Target,
+    };
+  }
+
+  return null;
+
+  function createModuleUrl(match: any) {
+    const resMatchIndex = match.index || 0;
+    const resMatchLength = match[0].length || 0;
+    return (
+      url.substring(0, resMatchIndex) +
+      '/' +
+      url.substring(resMatchIndex + resMatchLength)
+    );
+  }
+}
