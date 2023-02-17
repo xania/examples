@@ -21,7 +21,7 @@ export function formattedArgs(
   hasClosure: (cl: Closure) => boolean
 ) {
   const bindings = getBindings(closure, hasClosure);
-  const [deps] = formatBindings(bindings);
+  const [_, __, deps] = formatBindings(bindings);
   let retval = `"${closure.exportName}"`;
   if (deps.length) {
     retval += `, () => [${deps.join(', ')}]`;
@@ -44,14 +44,14 @@ export function getBindings(
 
   for (const cl of closure.scope.closures) {
     if (hasClosure(cl)) {
-      bindings.set(cl.exportName, cl);
+      // bindings.set(cl.exportName, cl);
     }
   }
 
   for (const ref of closure.scope.references) {
     if (ref instanceof Closure) {
       if (hasClosure(ref)) {
-        bindings.set(ref.exportName, ref);
+        // bindings.set(ref.exportName, ref);
       }
     } else if (ref.type === 'Identifier') {
       if (
@@ -97,7 +97,7 @@ export function formatBindings(
   for (const [k, arg] of bindings) {
     params.push(k);
     if (typeof arg === 'string') {
-      deps.push(k);
+      deps.push(arg);
       args.push(arg);
     } else {
       deps.push(`__$R("${arg.exportName}")`);

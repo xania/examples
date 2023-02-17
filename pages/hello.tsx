@@ -5,12 +5,12 @@ import { Layout } from "./Layout";
 class State {
   constructor(public value: number) {}
   set(fn: Function) {}
-  static async staticSet(fn: Function) {}
-  async fetch(fn: Function) {}
-  static async staticFetch(fn: Function) {}
-  static arrow = () => {
-    console.log("State.arrow");
-  };
+  //   static async staticSet(fn: Function) {}
+  //   async fetch(fn: Function) {}
+  //   static async staticFetch(fn: Function) {}
+  //   static arrow = () => {
+  //     console.log("State.arrow");
+  //   };
 }
 
 const obj = {
@@ -51,17 +51,19 @@ function sayHello() {
 //   }
 // }
 
+const a = 1;
 export function view() {
   const state = new State(11);
 
   function onClick() {
     state.set((x) => x + 1);
   }
+
   return (
     <Layout>
-      <button click={onClick}>Click me</button>
+      <button click={(_) => console.log(this)}>Click me</button>
       <button click={onClick}>Click me too</button>
-      Counter: {state}
+      Counter: {a}
     </Layout>
   );
 }

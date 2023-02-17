@@ -38,8 +38,7 @@ export function transformServer(
   }
 
   for (const closure of closures) {
-    if (closure instanceof Closure)
-      exportClosure(magicString, closure, hasClosure);
+    exportClosure(magicString, closure, hasClosure);
   }
 
   // for (const im of imports) {
