@@ -1,6 +1,11 @@
 ﻿import { jsx } from "../packages/view/index";
-import { State } from "../packages/state/lib/index";
+// import { State } from "../packages/state/lib/index";
 import { Layout } from "./Layout";
+
+class State {
+  constructor(public value: number) {}
+  set(fn: Function) {}
+}
 // // import { Layout } from "./Layout";
 
 // class State {

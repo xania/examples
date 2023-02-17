@@ -1,8 +1,8 @@
 ﻿import * as acorn from 'acorn';
 import { walk } from 'estree-walker';
 import { variableFromPatterns } from './ast/var-from-patterns';
-import { Identifier, ImportDeclaration, Literal, Program } from 'estree';
-import { Closure, DeclarationScope, Scope } from './scope';
+import { Identifier, ImportDeclaration, Program } from 'estree';
+import { Closure, Scope } from './scope';
 import { ASTNode } from './ast-node';
 import MagicString from 'magic-string';
 
@@ -17,7 +17,7 @@ export function parse(code: string) {
 
   const imports: Import[] = [];
   const programScope = new Scope(0, ast, false);
-  const scopes: (Scope | DeclarationScope)[] = [programScope];
+  const scopes: Scope[] = [programScope];
 
   let rootStart = 0;
 
@@ -122,20 +122,14 @@ export function parse(code: string) {
         node.type === 'WhileStatement'
       ) {
         scopes.push(scope.create(rootStart, node, false));
-      } else if (node.type === 'VariableDeclaration') {
-        for (const declarator of node.declarations) {
-          skipEnter.set(declarator.id, 'deep');
-          const vars: string[] = [];
-          for (const [v, p] of variableFromPatterns([declarator.id])) {
-            vars.push(v);
-            scope.declarations.set(v, p);
-          }
-
-          if (scope instanceof Scope) {
-            const declScope = new DeclarationScope(node, vars, scope);
-            scopes.push(declScope);
-          }
+      } else if (node.type === 'VariableDeclarator') {
+        skipEnter.set(node.id, 'deep');
+        const vars: string[] = [];
+        for (const [v, p] of variableFromPatterns([node.id])) {
+          vars.push(v);
+          scope.declarations.set(v, p);
         }
+      } else if (node.type === 'VariableDeclaration') {
       } else if (node.type === 'Identifier') {
         scope.references.push(node);
       } else if (node.type === 'ThisExpression') {

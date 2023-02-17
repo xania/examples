@@ -22,12 +22,14 @@
   PropertyDefinition,
   ReturnStatement,
   SpreadElement,
+  Super,
   ThisExpression,
   VariableDeclarator,
   WhileStatement,
 } from 'estree';
 
 export type ASTNode =
+  | Super
   | ExportSpecifier
   | Declaration
   | BlockStatement

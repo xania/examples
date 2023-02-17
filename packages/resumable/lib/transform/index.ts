@@ -1,7 +1,8 @@
-﻿import { Literal, Program } from 'estree';
+﻿import { Program } from 'estree';
 import MagicString from 'magic-string';
 import { Import, parse } from './parse';
 import { Closure, Scope } from './scope';
+import { Unresolved } from './unresolved';
 
 declare module 'estree' {
   export interface BaseNode {
@@ -20,7 +21,7 @@ export type TransfromOptions = {
   selectClosures?(
     root: Scope,
     program?: Program
-  ): readonly [Closure[], string[]];
+  ): readonly [Closure[], Unresolved[]];
 };
 
 export function transform(
@@ -39,15 +40,24 @@ export function transform(
     return closures.includes(cl);
   }
   for (const closure of closures) {
-    exportClosure(magicString, closure, imports, hasClosure);
+    if (closure instanceof Closure)
+      exportClosure(magicString, closure, imports, hasClosure);
   }
 
   for (const im of imports) {
-    const names = im.vars.filter((v) => unresolved.includes(v));
+    im.update(magicString, im.vars);
+  }
+
+  // for (const ref of unresolved) {
+  //   const scope = ref.scope;
+  //   console.log(ref.name);
+  // }
+
+  for (const im of imports) {
+    const names = im.vars.filter((v) => unresolved.some((u) => u.name === v));
     if (names.length) {
       im.update(magicString, names);
     }
-    // im.update(magic)
   }
 
   if (opts.includeHelper === undefined || opts.includeHelper === true) {

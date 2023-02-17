@@ -1,23 +1,12 @@
-﻿import { Identifier, Literal, ThisExpression } from 'estree';
+﻿import { Identifier, ThisExpression } from 'estree';
 import { ASTNode } from './ast-node';
-
-export class Closure {
-  // public bindings = new Map<string, string | Closure>();
-  references: Scope['references'] = [];
-
-  constructor(
-    public exportName: string,
-    public parent: ASTNode,
-    public scope: Scope
-  ) {}
-}
 
 export class Scope {
   public readonly declarations = new Map<string, ASTNode>();
   public readonly references: (Identifier | ThisExpression | Closure)[] = [];
   public readonly closures: Closure[] = [];
   public readonly children: Scope[] = [];
-  public readonly mappings = new Map<string, Scope['references']>();
+  public readonly expressions = new Map<ASTNode, Closure>();
 
   constructor(
     public rootStart: number,
@@ -80,30 +69,46 @@ export class ScopeBinding {
   }
 }
 
-export class DeclarationScope {
-  public readonly rootStart: Scope['rootStart'];
-  public readonly declarations: Scope['declarations'];
-  public readonly closures: Scope['closures'];
-  public readonly references: Scope['references'];
+// export class DeclarationScope {
+//   public readonly rootStart: Scope['rootStart'];
+//   public readonly declarations: Scope['declarations'];
+//   public readonly closures: Scope['closures'];
+//   public readonly references: Scope['references'];
+//   public readonly expressions: Scope['expressions'];
+
+//   constructor(
+//     public owner: VariableDeclarator,
+//     public vars: string[],
+//     public scope: Scope
+//   ) {
+//     this.rootStart = scope.rootStart;
+//     this.declarations = scope.declarations;
+//     this.closures = scope.closures;
+//     this.references = [];
+//     this.expressions = new Map();
+//   }
+
+//   create(rootStart: number, node: ASTNode, thisable: boolean) {
+//     return this.scope.create(rootStart, node, thisable);
+//   }
+
+//   mergeChildren() {
+//     if (this.owner.init) {
+//       const initExpr = this.expressions.get(this.owner.init);
+//       if (initExpr)
+//         for (const v of this.vars) {
+//           this.scope.mappings.set(v, initExpr);
+//         }
+//     }
+//   }
+// }
+
+export class Closure {
+  public references: Scope['references'] = [];
 
   constructor(
-    public owner: ASTNode,
-    public vars: string[],
+    public exportName: string,
+    public parent: ASTNode,
     public scope: Scope
-  ) {
-    this.rootStart = scope.rootStart;
-    this.declarations = scope.declarations;
-    this.closures = scope.closures;
-    this.references = [];
-  }
-
-  create(rootStart: number, node: ASTNode, thisable: boolean) {
-    return this.scope.create(rootStart, node, thisable);
-  }
-
-  mergeChildren() {
-    for (const v of this.vars) {
-      this.scope.mappings.set(v, this.references);
-    }
-  }
+  ) {}
 }

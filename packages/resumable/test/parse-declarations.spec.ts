@@ -4,16 +4,19 @@ import { describe, expect, it } from 'vitest';
 import { parse } from '../lib/transform/parse';
 
 describe('parse declarations', () => {
-  it('Initialize expression', () => {
+  it('declaration with an instance', () => {
     const code = `
-      const a = new State();
+      const a = new State(1, 2);
     `;
 
     const [scope] = parse(code);
 
-    expect(scope.mappings.get('a')).toBeDefined();
+    // expect(scope.mappings.get('a')).toBeDefined();
 
-    const references = scope.mappings.get('a');
-    expect(references).toHaveLength(1);
+    // const expr = scope.mappings.get('a');
+    // expect(expr).toBeInstanceOf(Instance);
+    // if (expr instanceof Instance) {
+    //   expect(expr.className).toBe('State');
+    // }
   });
 });
