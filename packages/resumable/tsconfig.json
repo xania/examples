@@ -1,5 +1,5 @@
 {
-  "include": ["lib", "../vite-plugin-resumable/lib/plugin.ts"],
+  "include": ["lib", "../vite-plugin-resumable/index.ts"],
   "compilerOptions": {
     "module": "ESNext",
     "lib": ["dom", "ESNext", "ES2018.AsyncIterable"],

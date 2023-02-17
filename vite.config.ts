@@ -1,7 +1,7 @@
 ﻿import { defineConfig } from "vite";
 import path from "node:path";
 import { fileURLToPath } from "url";
-import { resumable } from "./packages/vite-plugin-resumable/lib/plugin";
+import { resumable } from "./packages/vite-plugin-resumable";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 

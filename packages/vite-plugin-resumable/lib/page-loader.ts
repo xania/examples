@@ -2,9 +2,9 @@
 import type { SourceMap } from 'rollup';
 
 import type { ViteDevServer } from 'vite';
-import { transformServer } from '../../resumable/lib/transform/server';
+import { transformServer } from './transform/server';
 import { _getCombinedSourcemap } from './combine-sourcemaps';
-import { transformClient } from '../../resumable/lib/transform/client';
+import { transformClient } from './transform/client';
 /* use page module because we want to transform source code to resumable script just for the entry file and it's dependencies
  * We also dont want this transform to has effect when same source code is loaded
  */

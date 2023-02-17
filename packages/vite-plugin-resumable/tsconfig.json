@@ -1,5 +1,5 @@
 {
-  "include": ["lib", "../../bla.ts"],
+  "include": ["lib", "../../bla.ts", "index.ts"],
   "compilerOptions": {
     "module": "ESNext",
     "lib": ["ESNext"],
