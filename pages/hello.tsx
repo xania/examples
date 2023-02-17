@@ -5,12 +5,14 @@ import { Layout } from "./Layout";
 class State {
   constructor(public value: number) {}
   set(fn: Function) {}
-  //   static async staticSet(fn: Function) {}
-  //   async fetch(fn: Function) {}
-  //   static async staticFetch(fn: Function) {}
-  //   static arrow = () => {
-  //     console.log("State.arrow");
-  //   };
+  static async staticAsync(fn: Function) {}
+  async fetch(fn: Function) {}
+  static async staticFetch(fn: Function) {
+    return await fetch("http://xania");
+  }
+  static arrow = () => {
+    console.log("State.arrow", this);
+  };
 }
 
 const obj = {

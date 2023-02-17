@@ -43,6 +43,10 @@ export function transformClient(
     exportClosure(magicString, closure, hasClosure);
   }
 
+  for (const closure of closures) {
+    updateClosureReferences(magicString, closure, hasClosure);
+  }
+
   return {
     code: magicString.toString(),
     map: magicString.generateMap(),
@@ -59,52 +63,93 @@ function exportClosure(
   const bindings = getBindings(closure, hasClosure);
   const [params, args, deps] = formatBindings(bindings);
 
-  if (owner.start !== rootStart) {
-    magicString.move(owner.start, owner.end, rootStart);
-  }
   magicString.appendRight(
     owner.start,
     `export function ${closure.exportName}(${params.join(', ')}) {\n`
   );
-  magicString.appendRight(owner.start, `return `);
+  magicString.appendRight(owner.start, `  return `);
+  if (owner.start !== rootStart) {
+    magicString.move(owner.start, owner.end, rootStart);
+  }
   magicString.appendLeft(owner.end, '\n}\n');
+}
 
+function updateClosureReferences(
+  magicString: MagicString,
+  closure: Closure,
+  hasClosure: (cl: Closure) => boolean
+) {
   for (const subClosure of closure.scope.closures) {
     if (hasClosure(subClosure)) {
       const subBindings = getBindings(subClosure, hasClosure);
       const [subParams, subArgs, subDeps] = formatBindings(subBindings);
 
       const subOwner = subClosure.scope.owner;
-      switch (subOwner.type) {
-        case 'FunctionDeclaration':
-        case 'ClassDeclaration':
-          magicString.appendLeft(
-            subClosure.scope.owner.start,
-            `function ${subOwner.id!.name}(...args) { return ${
-              subClosure.exportName
-            }(${subArgs})(...args) }`
-          );
-          break;
-        default:
-          // magicString.appendLeft(
-          //   subClosure.scope.owner.start,
-          //   `${subClosure.exportName}(${subArgs})\n`
-          // );
-          break;
+      if (
+        subOwner.type === 'FunctionDeclaration' ||
+        subOwner.type === 'ClassDeclaration'
+      ) {
+        magicString.appendLeft(
+          subClosure.scope.owner.start,
+          `function ${subOwner.id!.name}(...args) { return ${
+            subClosure.exportName
+          }(${subArgs})(...args) }`
+        );
+      } else {
+        const subParent = subClosure.parent;
+        if (subParent) {
+          switch (subParent.type) {
+            case 'MethodDefinition':
+              if (subOwner.type === 'FunctionExpression') {
+                magicString.appendRight(
+                  subOwner.start,
+                  ` /* ${
+                    subParent.key.type === 'Identifier'
+                      ? subParent.key.name
+                      : ''
+                  } */ ${subOwner.async ? 'async' : ''} function `
+                );
+              }
+              magicString.appendLeft(
+                subClosure.scope.owner.start,
+                ` = ${subClosure.exportName}(${subArgs});`
+              );
+              if (subParent.start < subParent.key.start) {
+                magicString.overwrite(
+                  subParent.start,
+                  subParent.key.start,
+                  subParent.static ? 'static ' : ''
+                );
+              }
+              break;
+            case 'PropertyDefinition':
+              magicString.appendLeft(
+                subClosure.scope.owner.start,
+                `${subClosure.exportName}(${subArgs});`
+              );
+              break;
+            default:
+              magicString.appendLeft(
+                subClosure.scope.owner.start,
+                `|${subParent.type}|`
+              );
+              break;
+          }
+        }
       }
     }
   }
 
-  for (const ref of closure.scope.references) {
-    if (ref instanceof Closure) {
-      const bindings = getBindings(ref, hasClosure);
-      const [params, args, deps] = formatBindings(bindings);
+  // for (const ref of closure.scope.references) {
+  //   if (ref instanceof Closure) {
+  //     const bindings = getBindings(ref, hasClosure);
+  //     const [params, args, deps] = formatBindings(bindings);
 
-      const closureInitExpr = `(${ref.exportName}(${args}))`;
+  //     const closureInitExpr = `(${ref.exportName}(${args}))`;
 
-      magicString.appendLeft(ref.scope.owner.start, closureInitExpr);
-    }
-  }
+  //     magicString.appendLeft(ref.scope.owner.start, closureInitExpr);
+  //   }
+  // }
 
   for (const ref of closure.scope.references) {
     if (ref instanceof Closure) {
