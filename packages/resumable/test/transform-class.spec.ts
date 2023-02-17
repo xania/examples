@@ -300,13 +300,13 @@ describe('transform classes', () => {
     `;
 
     const expected = `
-      export function JsxEl$cifgf($aucqpvexsr, $cpkkxugfxh) {
+      export function JsxEl$cifgf($cpkkxugfxh, $aucqpvexsr) {
         return __$C(
           class JsxElement {
             setProp = $cpkkxugfxh($aucqpvexsr);
           },
           "JsxEl$cifgf",
-          [__$R("$aucqpvexsr"), __$R("$cpkkxugfxh")]
+          [__$R("$cpkkxugfxh"), __$R("$aucqpvexsr")]
         );
       }
       export function $cpkkxugfxh($aucqpvexsr) {
@@ -323,7 +323,7 @@ describe('transform classes', () => {
       export function $aucqpvexsr(this_68) {
         return __$C(() => this_68, "$aucqpvexsr", [this_68]);
       }
-      export const JsxElement = JsxEl$cifgf($aucqpvexsr, $cpkkxugfxh);
+      export const JsxElement = JsxEl$cifgf($cpkkxugfxh, $aucqpvexsr);
       `;
 
     assertTransform(code, expected);

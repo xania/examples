@@ -1,4 +1,4 @@
-﻿import { Identifier, ThisExpression } from 'estree';
+﻿import { Declaration, Identifier, ThisExpression } from 'estree';
 import { ASTNode } from './ast-node';
 
 export class Scope {
@@ -109,6 +109,7 @@ export class Closure {
   constructor(
     public exportName: string,
     public parent: ASTNode,
-    public scope: Scope
+    public scope: Scope,
+    public entry: Declaration | null | undefined
   ) {}
 }

@@ -1,7 +1,12 @@
 ﻿import * as acorn from 'acorn';
 import { walk } from 'estree-walker';
 import { variableFromPatterns } from './ast/var-from-patterns';
-import { Identifier, ImportDeclaration, Program } from 'estree';
+import {
+  ExportNamedDeclaration,
+  Identifier,
+  ImportDeclaration,
+  Program,
+} from 'estree';
 import { Closure, Scope } from './scope';
 import { ASTNode } from './ast-node';
 import MagicString from 'magic-string';
@@ -18,6 +23,8 @@ export function parse(code: string) {
   const imports: Import[] = [];
   const programScope = new Scope(0, ast, false);
   const scopes: Scope[] = [programScope];
+
+  let entryDeclaration: ExportNamedDeclaration['declaration'] | null = null;
 
   let rootStart = 0;
 
@@ -53,6 +60,8 @@ export function parse(code: string) {
           this.skip();
         }
         return;
+      } else if (node.type === 'ExportNamedDeclaration') {
+        entryDeclaration = node.declaration;
       } else if (node.type === 'ReturnStatement') {
         const returnScope = scope.create(rootStart, node, false);
         scopes.push(returnScope);
@@ -69,7 +78,9 @@ export function parse(code: string) {
           scope.declarations.set(node.id.name, node);
           skipEnter.set(node.id, 'deep');
           const alias = __alias(code, node, scope.rootStart);
-          scope.closures.push(new Closure(alias, parent, classScope));
+          scope.closures.push(
+            new Closure(alias, parent, classScope, entryDeclaration)
+          );
         }
       } else if (
         node.type === 'MethodDefinition' ||
@@ -81,8 +92,8 @@ export function parse(code: string) {
         if (node.type === 'MethodDefinition' && node.kind === 'constructor')
           skipEnter.set(node.value, 'shallow');
 
-        const memberScope = scope.create(rootStart, node, true);
-        scopes.push(memberScope);
+        // const memberScope = scope.create(rootStart, node, true);
+        // scopes.push(memberScope);
       } else if (node.type === 'ArrowFunctionExpression') {
         const funcScope = scope.create(rootStart, node, false);
         for (const [v, p] of variableFromPatterns(node.params)) {
@@ -92,7 +103,9 @@ export function parse(code: string) {
 
         for (const p of node.params) skipEnter.set(p, 'deep');
         const alias = __alias(code, node, rootStart);
-        scope.closures.push(new Closure(alias, parent, funcScope));
+        scope.closures.push(
+          new Closure(alias, parent, funcScope, entryDeclaration)
+        );
       } else if (
         node.type === 'FunctionDeclaration' ||
         node.type === 'FunctionExpression'
@@ -113,7 +126,9 @@ export function parse(code: string) {
 
         if (parent.type !== 'MethodDefinition' || parent.kind !== 'get') {
           const alias = __alias(code, node, rootStart);
-          scope.closures.push(new Closure(alias, parent, funcScope));
+          scope.closures.push(
+            new Closure(alias, parent, funcScope, entryDeclaration)
+          );
         }
       } else if (node.type === 'MemberExpression') {
         skipEnter.set(node.property!, 'deep');
@@ -139,6 +154,10 @@ export function parse(code: string) {
     leave(n) {
       const node = n as ASTNode;
       const scope = scopes[scopes.length - 1]!;
+
+      if (node.type === 'ExportNamedDeclaration') {
+        entryDeclaration = null;
+      }
 
       if (scope.owner === node) {
         const blockScope = scopes.pop()!;
@@ -188,7 +207,7 @@ export class Import {
     return this.decl.source.value;
   }
 
-  update(magicString: MagicString, names: string[]) {
+  update(magicString: MagicString, target: string) {
     const { decl } = this;
 
     const source = decl.source;
@@ -196,7 +215,7 @@ export class Import {
       if (source) {
         const match = source.raw?.match(/\.[jt]sx?/);
         if (match) {
-          magicString.appendRight(source.start + 1, `/@resumable[${names}]`);
+          magicString.appendRight(source.start + 1, `/@${target}`);
         } else {
           console.error(source);
         }

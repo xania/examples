@@ -2,7 +2,7 @@
 import MagicString from 'magic-string';
 import { Import, parse } from './parse';
 import { Closure, Scope } from './scope';
-import { Unresolved } from './unresolved';
+import { formatBindings, getBindings, selectAllClosures } from './utils';
 
 declare module 'estree' {
   export interface BaseNode {
@@ -11,27 +11,18 @@ declare module 'estree' {
   }
 }
 
-export const CLOSURE_HELPER = `
-function __$C(fn, name, args) { return Object.assign(fn, {__src: import.meta.url, __name: name, __args: args}) }
-function __$R(name) { return {__ref: name} }
-`;
-
 export type TransfromOptions = {
-  includeHelper?: boolean;
-  selectClosures?(
-    root: Scope,
-    program?: Program
-  ): readonly [Closure[], Unresolved[]];
+  selectClosures?(root: Scope, program?: Program): readonly Closure[];
 };
 
-export function transform(
+export function transformClient(
   code: string,
   opts: TransfromOptions
 ): { code: string; map: any } | undefined {
   const [rootScope, program, imports] = parse(code);
   const magicString = new MagicString(code);
 
-  const [closures, unresolved] =
+  const closures =
     opts.selectClosures instanceof Function
       ? opts.selectClosures(rootScope, program)
       : selectAllClosures(rootScope);
@@ -40,28 +31,7 @@ export function transform(
     return closures.includes(cl);
   }
   for (const closure of closures) {
-    if (closure instanceof Closure)
-      exportClosure(magicString, closure, imports, hasClosure);
-  }
-
-  for (const im of imports) {
-    im.update(magicString, im.vars);
-  }
-
-  // for (const ref of unresolved) {
-  //   const scope = ref.scope;
-  //   console.log(ref.name);
-  // }
-
-  for (const im of imports) {
-    const names = im.vars.filter((v) => unresolved.some((u) => u.name === v));
-    if (names.length) {
-      im.update(magicString, names);
-    }
-  }
-
-  if (opts.includeHelper === undefined || opts.includeHelper === true) {
-    magicString.append(CLOSURE_HELPER);
+    exportClosure(magicString, closure, hasClosure);
   }
 
   return {
@@ -70,94 +40,14 @@ export function transform(
   };
 }
 
-function getBindings(
-  closure: Closure,
-  imports: Import[],
-  hasClosure: (cl: Closure) => boolean,
-  stack = new Set()
-) {
-  const bindings = new Map<string, string | Closure>();
-
-  if (stack.has(closure)) {
-    return bindings;
-  }
-  stack.add(closure);
-
-  for (const cl of closure.scope.closures) {
-    if (hasClosure(cl)) {
-      bindings.set(cl.exportName, cl);
-    }
-  }
-
-  for (const ref of closure.scope.references) {
-    if (ref instanceof Closure) {
-      if (hasClosure(ref)) {
-        bindings.set(ref.exportName, ref);
-      }
-    } else if (ref.type === 'Identifier') {
-      if (
-        !closure.scope.declarations.has(ref.name) &&
-        resolve(closure.scope.parent, ref.name)
-      ) {
-        bindings.set(ref.name, ref.name);
-      }
-    } else if (!closure.scope.thisable) {
-      bindings.set('this_' + closure.scope.owner.start, 'this');
-    }
-  }
-
-  return bindings;
-
-  function resolve(leaf: Scope | undefined, ref: string) {
-    let scope: Scope | undefined = leaf;
-    while (scope) {
-      // if (scope.exports.has(ref)) return true;
-      if (scope.declarations.has(ref)) return true;
-      scope = scope.parent;
-    }
-
-    return false;
-  }
-}
-
-function formatBindings(
-  bindings: Map<string, string | Closure>,
-  stack = new Set()
-) {
-  if (stack.has(bindings)) {
-    debugger;
-    return [];
-  }
-
-  stack.add(bindings);
-
-  const args: string[] = [];
-  const params: string[] = [];
-  const deps: string[] = [];
-
-  for (const [k, arg] of bindings) {
-    params.push(k);
-    if (typeof arg === 'string') {
-      deps.push(k);
-      args.push(arg);
-    } else {
-      deps.push(`__$R("${arg.exportName}")`);
-      args.push(arg.exportName);
-    }
-  }
-
-  return [params, args.join(', '), deps] as const;
-}
-
 function exportClosure(
   magicString: MagicString,
   closure: Closure,
-  imports: Import[],
   hasClosure: (cl: Closure) => boolean
 ) {
   const { owner, rootStart } = closure.scope;
 
-  const bindings = getBindings(closure, imports, hasClosure);
+  const bindings = getBindings(closure, hasClosure);
   const [params, args, deps] = formatBindings(bindings);
 
   if (owner.start !== rootStart) {
@@ -299,19 +189,4 @@ function exportClosure(
 
 function formatInit(ref: string, args: string) {
   return `(${ref}(${args}))`;
-}
-function selectAllClosures(rootScope: Scope): [Closure[], []] {
-  const stack: Scope[] = [rootScope];
-
-  const retval: Closure[] = [];
-  while (stack.length) {
-    const scope = stack.pop()!;
-    retval.push(...scope.closures);
-
-    for (const child of scope.children) {
-      stack.push(child);
-    }
-  }
-
-  return [retval, []];
 }

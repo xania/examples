@@ -5,6 +5,22 @@ import { Layout } from "./Layout";
 class State {
   constructor(public value: number) {}
   set(fn: Function) {}
+  static async staticSet(fn: Function) {}
+  async fetch(fn: Function) {}
+  static async staticFetch(fn: Function) {}
+  static arrow = () => {
+    console.log("State.arrow");
+  };
+}
+
+const obj = {
+  arrow: () => {
+    console.log("obj.arrow");
+  }
+};
+
+function sayHello() {
+  console.log("hello");
 }
 // // import { Layout } from "./Layout";
 

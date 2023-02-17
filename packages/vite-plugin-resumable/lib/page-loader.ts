@@ -2,16 +2,21 @@
 import type { SourceMap } from 'rollup';
 
 import type { ViteDevServer } from 'vite';
-import { transform } from '../../resumable/lib/transform';
-import { Closure, Scope } from '../../resumable/lib/transform/scope';
-import { Unresolved } from '../../resumable/lib/transform/unresolved';
+import { transformServer } from '../../resumable/lib/transform/server';
 import { _getCombinedSourcemap } from './combine-sourcemaps';
+import { transformClient } from '../../resumable/lib/transform/client';
 /* use page module because we want to transform source code to resumable script just for the entry file and it's dependencies
  * We also dont want this transform to has effect when same source code is loaded
  */
 
 const CSS_LANGS_RE =
   /\.(css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/;
+
+type Target = 'server' | 'client';
+
+export const SERVER_URL_RE = /\/@server\//;
+export const CLIENT_URL_RE = /\/@client\//;
+// export const RESUMABLE_URL_RE = /\/@resumable\[([^\]]*)\]\//;
 
 const ssrModuleExportsKey = `__vite_ssr_exports__`;
 const ssrImportKey = `__vite_ssr_import__`;
@@ -33,6 +38,7 @@ function loadModule(
   vite: ViteDevServer,
   load: (
     url: string,
+    target: Target,
     mod: Record<string, any>
   ) => Promise<Record<string, any> | null>
 ) {
@@ -40,7 +46,7 @@ function loadModule(
   const moduleCache = new Map<string, Record<string, any>>();
 
   const loadstack: string[] = [];
-  function moduleLoader(url: string) {
+  function moduleLoader(url: string, target: Target) {
     if (loadstack.includes(url)) {
       // cyclic, return possibly non initialized module and brace for impact
       return Promise.resolve(moduleCache.get(url));
@@ -60,7 +66,7 @@ function loadModule(
     moduleCache.set(url, ssrModule);
 
     loadstack.push(url);
-    const promise = load(url, ssrModule);
+    const promise = load(url, target, ssrModule);
 
     promise.then((m) => {
       const end = loadstack.pop()!;
@@ -79,8 +85,8 @@ function loadModule(
 export function createLoader(server: ViteDevServer) {
   const loadResumableModule = loadModule(
     server,
-    async (url: string, ssrModule: Record<string, any>) => {
-      const resumeResult = await loadAndTransform(url);
+    async (url: string, target: Target, ssrModule: Record<string, any>) => {
+      const resumeResult = await loadAndTransform(url, target);
       if (!resumeResult) return null;
 
       const filename = resumeResult.file;
@@ -110,10 +116,13 @@ export function createLoader(server: ViteDevServer) {
         }
 
         if (dep.startsWith('/@resumable')) {
-          return loadResumableModule(dep.substring('/@resumable'.length));
+          return loadResumableModule(
+            dep.substring('/@resumable'.length),
+            target
+          );
         }
 
-        return loadResumableModule(unwrapId(dep));
+        return loadResumableModule(unwrapId(dep), target);
       };
       const ssrDynamicImport = (dep: string) => {
         // #3087 dynamic import vars is ignored at rewrite import path,
@@ -192,8 +201,61 @@ export function createLoader(server: ViteDevServer) {
     }
   );
 
-  async function loadAndTransform(url: string) {
-    const resolved = await server.pluginContainer.resolveId(url);
+  function parseUrl(
+    url: string
+  ): { moduleUrl: string; target: 'server' | 'client' } | null {
+    const clientMatch = url.match(CLIENT_URL_RE);
+    if (clientMatch) {
+      return { moduleUrl: createModuleUrl(clientMatch), target: 'client' };
+    }
+    const serverMatch = url.match(SERVER_URL_RE);
+    if (serverMatch) {
+      return { moduleUrl: createModuleUrl(serverMatch), target: 'server' };
+    }
+    return null;
+
+    function createModuleUrl(match: any) {
+      const resMatchIndex = match.index || 0;
+      const resMatchLength = match[0].length || 0;
+      return (
+        url.substring(0, resMatchIndex) +
+        '/' +
+        url.substring(resMatchIndex + resMatchLength)
+      );
+    }
+  }
+
+  // function parseUrl(url: string): readonly [string, Entry[]] {
+  //   const resMatch = url.match(RESUMABLE_URL_RE);
+
+  //   if (resMatch) {
+  //     const resMatchIndex = resMatch.index || 0;
+  //     const resMatchLength = resMatch[0].length || 0;
+  //     const moduleUrl =
+  //       url.substring(0, resMatchIndex) +
+  //       '/' +
+  //       url.substring(resMatchIndex + resMatchLength);
+
+  //     const entries = resMatch[1]
+  //       .split(',')
+  //       .map((e) =>
+  //         e.endsWith('()')
+  //           ? new Entry(e.substring(0, e.length - 2), true)
+  //           : new Entry(e, false)
+  //       );
+
+  //     return [moduleUrl, entries] as const;
+  //   }
+  //   return [url, []];
+  // }
+
+  async function loadAndTransform(url: string, target?: Target) {
+    const parseResult = target ? { moduleUrl: url, target } : parseUrl(url);
+    if (!parseResult) return;
+
+    const resolved = await server.pluginContainer.resolveId(
+      parseResult.moduleUrl
+    );
     if (!resolved) {
       return null;
     }
@@ -208,9 +270,10 @@ export function createLoader(server: ViteDevServer) {
       sourcemapChain.push(baseResult.map);
     }
 
-    const resumeResult = transform(baseResult.code, {
-      selectClosures: selectEntryClosures,
-    });
+    const resumeResult =
+      parseResult.target === 'server'
+        ? transformServer(baseResult.code, {})
+        : transformClient(baseResult.code, {});
 
     if (!resumeResult) return null;
     sourcemapChain.push(resumeResult.map);
@@ -273,52 +336,85 @@ function genSourceMapUrl(map: any) {
 
 // }
 
-function selectEntryClosures(
-  rootScope: Scope
-): readonly [Closure[], Unresolved[]] {
-  const stack: Scope[] = [rootScope];
+// const selectEntryClosures = (
+//   rootScope: Scope
+// ): readonly [Closure[], Unresolved[]] => {
+//   const stack: Scope[] = [rootScope];
 
-  const rootClosures: Closure[] = [];
-  while (stack.length) {
-    const scope = stack.pop()!;
-    rootClosures.push(...scope.closures);
+//   const retval = new Set<Closure>();
+//   const rootClosures: Closure[] = [];
+//   for (const closure of rootScope.closures) {
+//     if (closure.entry) {
+//       switch (closure.entry.type) {
+//         case 'FunctionDeclaration':
+//           for (const entry of entries) {
+//             if (entry.name === closure.entry.id?.name) {
+//               if (entry.body) rootClosures.push(closure);
+//               else retval.add(closure);
+//             }
+//           }
+//           break;
+//         case 'VariableDeclaration':
+//           for (const declarator of closure.entry.declarations) {
+//             if (declarator.id.type === 'Identifier') {
+//               for (const entry of entries) {
+//                 if (entry.name === declarator.id.name) {
+//                   if (entry.body) rootClosures.push(closure);
+//                   else retval.add(closure);
+//                 }
+//               }
+//             } else {
+//               debugger;
+//             }
+//           }
+//           break;
+//       }
+//     }
+//   }
 
-    for (const child of scope.children) {
-      if (rootClosures.every((cl) => cl.scope !== child)) stack.push(child);
-    }
-  }
+//   // while (stack.length) {
+//   //   const scope = stack.pop()!;
+//   //   rootClosures.push(...scope.closures);
 
-  const retval = new Set<Closure>();
-  const unresolved = new Set<Unresolved>();
-  for (let i = 0, len = rootClosures.length; i < len; i++) {
-    const rootClosure = rootClosures[i];
-    const rootScope = rootClosure.scope;
-    for (const ref of rootScope.references) {
-      if (ref instanceof Closure) {
-        // retval.add(ref);
-      } else if (ref.type === 'Identifier') {
-        const closure = resolve(rootScope, ref.name);
-        if (closure) {
-          retval.add(closure);
-        } else {
-          unresolved.add(new Unresolved(ref.name, rootScope));
-        }
-      }
-    }
-  }
+//   //   for (const child of scope.children) {
+//   //     if (rootClosures.every((cl) => cl.scope !== child)) stack.push(child);
+//   //   }
+//   // }
 
-  function resolve(leaf: Scope, name: string) {
-    let scope: Scope | undefined = leaf;
-    while (scope) {
-      if (scope.declarations.has(name)) {
-        const decl = scope.declarations.get(name)!;
-        return scope.closures.find((cl) => cl.scope.owner === decl);
-      }
+//   const unresolved = new Set<Unresolved>();
+//   for (let i = 0, len = rootClosures.length; i < len; i++) {
+//     const rootClosure = rootClosures[i];
+//     const rootScope = rootClosure.scope;
+//     for (const ref of rootScope.references) {
+//       if (ref instanceof Closure) {
+//         // retval.add(ref);
+//       } else if (ref.type === 'Identifier') {
+//         const closure = resolve(rootScope, ref.name);
+//         if (closure) {
+//           retval.add(closure);
+//         } else {
+//           unresolved.add(new Unresolved(ref.name, rootScope));
+//         }
+//       }
+//     }
+//   }
 
-      scope = scope.parent;
-    }
-    return null;
-  }
+//   function resolve(leaf: Scope, name: string) {
+//     let scope: Scope | undefined = leaf;
+//     while (scope) {
+//       if (scope.declarations.has(name)) {
+//         const decl = scope.declarations.get(name)!;
+//         return scope.closures.find((cl) => cl.scope.owner === decl);
+//       }
 
-  return [[...retval], [...unresolved]];
-}
+//       scope = scope.parent;
+//     }
+//     return null;
+//   }
+
+//   return [[...retval], [...unresolved]];
+// };
+
+// export class Entry {
+//   constructor(public name: string, public body: boolean) {}
+// }
