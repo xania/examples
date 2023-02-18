@@ -1,12 +1,51 @@
 ﻿import { Closure, Scope } from './scope';
 
-export function selectAllClosures(rootScope: Scope): Closure[] {
+export function selectRootClosures(
+  root: Scope,
+  hasClosure: (cl: Closure) => boolean
+) {
+  const stack: Scope[] = [root];
+  const retval: Closure[] = [];
+
+  const exclude = new Set<Scope>();
+
+  while (stack.length) {
+    const curr = stack.pop()!;
+
+    for (const cl of curr.closures) {
+      if (hasClosure(cl)) {
+        retval.push(cl);
+        exclude.add(cl.scope);
+      }
+    }
+
+    for (const child of curr.children) {
+      if (exclude.has(child)) {
+        continue;
+      }
+      stack.push(child);
+    }
+  }
+
+  return retval;
+}
+
+export function selectClosures(
+  rootScope: Scope,
+  entries: null | string[]
+): Closure[] {
   const stack: Scope[] = [rootScope];
 
   const retval: Closure[] = [];
   while (stack.length) {
     const scope = stack.pop()!;
-    retval.push(...scope.closures);
+    if (entries instanceof Array) {
+      for (const cl of scope.closures) {
+        if (entries.includes(cl.exportName)) retval.push(cl);
+      }
+    } else {
+      retval.push(...scope.closures);
+    }
 
     for (const child of scope.children) {
       stack.push(child);

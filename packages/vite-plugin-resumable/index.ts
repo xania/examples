@@ -38,7 +38,8 @@ export function resumable(xn?: Options): Plugin {
         if (parseResult) {
           const result = await loader.loadAndTransform(
             parseResult.moduleUrl,
-            parseResult.target
+            parseResult.target,
+            parseResult.entries
           );
           if (result) {
             res.setHeader('Content-Type', 'application/javascript');

@@ -2,7 +2,12 @@
 import MagicString from 'magic-string';
 import { parse } from './parse';
 import { Closure, Scope } from './scope';
-import { formatBindings, getBindings, selectAllClosures } from './utils';
+import {
+  formatBindings,
+  getBindings,
+  selectClosures,
+  selectRootClosures,
+} from './utils';
 
 import { walk } from 'estree-walker';
 import { ASTNode } from './ast-node';
@@ -15,7 +20,8 @@ declare module 'estree' {
 }
 
 export type TransfromOptions = {
-  selectClosures?(root: Scope, program?: Program): readonly Closure[];
+  // selectClosures?(root: Scope, program?: Program): readonly Closure[];
+  entries: string[] | null;
 };
 
 export function transformClient(
@@ -25,27 +31,39 @@ export function transformClient(
   const [rootScope, program, imports] = parse(code);
   const magicString = new MagicString(code);
 
-  const closures =
-    opts.selectClosures instanceof Function
-      ? opts.selectClosures(rootScope, program)
-      : selectAllClosures(rootScope);
+  function hasClosure(cl: Closure) {
+    if (opts.entries instanceof Array) {
+      return opts.entries?.includes(cl.exportName);
+    }
+    return true;
+  }
+
+  const rootClosures: Closure[] = selectRootClosures(rootScope, hasClosure);
+
+  const stack: Scope[] = [];
+  for (const closure of rootClosures) {
+    exportClosure(magicString, closure, hasClosure);
+    updateClosureReferences(magicString, closure, hasClosure, true);
+    stack.push(closure.scope);
+  }
+
+  while (stack.length) {
+    const scope = stack.pop()!;
+
+    const closures = selectRootClosures(scope, hasClosure);
+
+    for (const closure of closures) {
+      exportClosure(magicString, closure, hasClosure);
+      updateClosureReferences(magicString, closure, hasClosure, false);
+      stack.push(closure.scope);
+    }
+  }
 
   stripProgram(
     magicString,
     program,
-    closures.map((cl) => cl.scope.owner)
+    rootClosures.map((cl) => cl.scope.owner)
   );
-
-  function hasClosure(cl: Closure) {
-    return closures.includes(cl);
-  }
-  for (const closure of closures) {
-    exportClosure(magicString, closure, hasClosure);
-  }
-
-  for (const closure of closures) {
-    updateClosureReferences(magicString, closure, hasClosure);
-  }
 
   return {
     code: magicString.toString(),
@@ -58,7 +76,9 @@ function exportClosure(
   closure: Closure,
   hasClosure: (cl: Closure) => boolean
 ) {
+  console.log(closure.exportName);
   const { owner, rootStart } = closure.scope;
+  console.log(magicString.slice(owner.start, owner.end));
 
   const bindings = getBindings(closure, hasClosure);
   const [params, args, deps] = formatBindings(bindings);
@@ -77,65 +97,66 @@ function exportClosure(
 function updateClosureReferences(
   magicString: MagicString,
   closure: Closure,
-  hasClosure: (cl: Closure) => boolean
+  hasClosure: (cl: Closure) => boolean,
+  isRoot: boolean
 ) {
-  for (const subClosure of closure.scope.closures) {
-    if (hasClosure(subClosure)) {
-      const subBindings = getBindings(subClosure, hasClosure);
-      const [subParams, subArgs, subDeps] = formatBindings(subBindings);
+  const subBindings = getBindings(closure, hasClosure);
+  const [subParams, subArgs, subDeps] = formatBindings(subBindings);
 
-      const subOwner = subClosure.scope.owner;
-      if (
-        subOwner.type === 'FunctionDeclaration' ||
-        subOwner.type === 'ClassDeclaration'
-      ) {
-        magicString.appendLeft(
-          subClosure.scope.owner.start,
-          `function ${subOwner.id!.name}(...args) { return ${
-            subClosure.exportName
-          }(${subArgs})(...args) }`
-        );
-      } else {
-        const subParent = subClosure.parent;
-        if (subParent) {
-          switch (subParent.type) {
-            case 'MethodDefinition':
-              if (subOwner.type === 'FunctionExpression') {
-                magicString.appendRight(
-                  subOwner.start,
-                  ` /* ${
-                    subParent.key.type === 'Identifier'
-                      ? subParent.key.name
-                      : ''
-                  } */ ${subOwner.async ? 'async' : ''} function `
-                );
-              }
-              magicString.appendLeft(
-                subClosure.scope.owner.start,
-                ` = ${subClosure.exportName}(${subArgs});`
-              );
-              if (subParent.start < subParent.key.start) {
-                magicString.overwrite(
-                  subParent.start,
-                  subParent.key.start,
-                  subParent.static ? 'static ' : ''
-                );
-              }
-              break;
-            case 'PropertyDefinition':
-              magicString.appendLeft(
-                subClosure.scope.owner.start,
-                `${subClosure.exportName}(${subArgs});`
-              );
-              break;
-            default:
-              magicString.appendLeft(
-                subClosure.scope.owner.start,
-                `|${subParent.type}|`
-              );
-              break;
+  const subOwner = closure.scope.owner;
+  if (
+    subOwner.type === 'FunctionDeclaration' ||
+    subOwner.type === 'ClassDeclaration'
+  ) {
+    magicString.appendLeft(
+      closure.scope.owner.start,
+      `function ${subOwner.id!.name}(...args) { return ${
+        closure.exportName
+      }(${subArgs})(...args) }`
+    );
+  } else {
+    const subParent = closure.parent;
+    if (subParent) {
+      switch (subParent.type) {
+        case 'MethodDefinition':
+          if (subOwner.type === 'FunctionExpression') {
+            magicString.appendRight(
+              subOwner.start,
+              ` /* ${
+                subParent.key.type === 'Identifier' ? subParent.key.name : ''
+              } */ ${subOwner.async ? 'async' : ''} function `
+            );
           }
-        }
+          magicString.appendLeft(
+            closure.scope.owner.start,
+            ` = ${closure.exportName}(${subArgs});`
+          );
+          if (subParent.start < subParent.key.start) {
+            magicString.overwrite(
+              subParent.start,
+              subParent.key.start,
+              subParent.static ? 'static ' : ''
+            );
+          }
+          break;
+        case 'PropertyDefinition':
+          magicString.appendLeft(
+            closure.scope.owner.start,
+            `${closure.exportName}(${subArgs});`
+          );
+          break;
+        case 'Property':
+          magicString.appendLeft(
+            closure.scope.owner.start,
+            `${closure.exportName}(${subArgs});`
+          );
+          break;
+        default:
+          magicString.appendLeft(
+            closure.scope.owner.start,
+            `|${subParent.type}|`
+          );
+          break;
       }
     }
   }

@@ -14,7 +14,7 @@ const CSS_LANGS_RE =
 
 type Target = 'server' | 'client';
 
-export const RESUMABLE_URL_RE = /\/@(client|server)\//;
+export const RESUMABLE_URL_RE = /\/@(client(\[([^\)]+)\])?|server)\//;
 // export const RESUMABLE_URL_RE = /\/@resumable\[([^\]]*)\]\//;
 
 const ssrModuleExportsKey = `__vite_ssr_exports__`;
@@ -221,7 +221,11 @@ export function createLoader(server: ViteDevServer) {
   //   return [url, []];
   // }
 
-  async function loadAndTransform(url: string, target: Target = 'server') {
+  async function loadAndTransform(
+    url: string,
+    target: Target = 'server',
+    entries: null | string[] = null
+  ) {
     const resolved = await server.pluginContainer.resolveId(url);
     if (!resolved) {
       return null;
@@ -240,7 +244,9 @@ export function createLoader(server: ViteDevServer) {
     const resumeResult =
       target === 'server'
         ? transformServer(baseResult.code, {})
-        : transformClient(baseResult.code, {});
+        : transformClient(baseResult.code, {
+            entries,
+          });
 
     if (!resumeResult) return null;
     sourcemapChain.push(resumeResult.map);
@@ -386,14 +392,17 @@ function genSourceMapUrl(map: any) {
 //   constructor(public name: string, public body: boolean) {}
 // }
 
-export function parseResumableUrl(
-  url: string
-): { moduleUrl: string; target: 'server' | 'client' } | null {
+export function parseResumableUrl(url: string): {
+  moduleUrl: string;
+  target: 'server' | 'client';
+  entries: string[] | null;
+} | null {
   const clientMatch = url.match(RESUMABLE_URL_RE);
   if (clientMatch) {
     return {
       moduleUrl: createModuleUrl(clientMatch),
       target: clientMatch[1] as Target,
+      entries: clientMatch[3] ? clientMatch[3].split(',') : null,
     };
   }
 

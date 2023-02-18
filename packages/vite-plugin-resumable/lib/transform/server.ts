@@ -2,7 +2,7 @@
 import MagicString from 'magic-string';
 import { parse } from './parse';
 import { Closure, Scope } from './scope';
-import { formattedArgs, selectAllClosures } from './utils';
+import { formattedArgs, selectClosures } from './utils';
 
 declare module 'estree' {
   export interface BaseNode {
@@ -31,7 +31,7 @@ export function transformServer(
   const closures =
     opts.selectClosures instanceof Function
       ? opts.selectClosures(rootScope, program)
-      : selectAllClosures(rootScope);
+      : selectClosures(rootScope);
 
   function hasClosure(cl: Closure) {
     return closures.includes(cl);
