@@ -76,9 +76,7 @@ function exportClosure(
   closure: Closure,
   hasClosure: (cl: Closure) => boolean
 ) {
-  console.log(closure.exportName);
   const { owner, rootStart } = closure.scope;
-  console.log(magicString.slice(owner.start, owner.end));
 
   const bindings = getBindings(closure, hasClosure);
   const [params, args, deps] = formatBindings(bindings);
@@ -145,6 +143,7 @@ function updateClosureReferences(
             `${closure.exportName}(${subArgs});`
           );
           break;
+        case 'ReturnStatement':
         case 'Property':
           magicString.appendLeft(
             closure.scope.owner.start,

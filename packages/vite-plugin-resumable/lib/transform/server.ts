@@ -18,7 +18,6 @@ function __$R(name) { return {__ref: name} }
 
 export type TransfromOptions = {
   includeHelper?: boolean;
-  selectClosures?(root: Scope, program?: Program): readonly Closure[];
 };
 
 export function transformServer(
@@ -28,10 +27,7 @@ export function transformServer(
   const [rootScope, program, imports] = parse(code);
   const magicString = new MagicString(code);
 
-  const closures =
-    opts.selectClosures instanceof Function
-      ? opts.selectClosures(rootScope, program)
-      : selectClosures(rootScope);
+  const closures = selectClosures(rootScope, null);
 
   function hasClosure(cl: Closure) {
     return closures.includes(cl);
@@ -143,7 +139,7 @@ function exportClosure(
 
           break;
         default:
-          magicString.appendRight(scope.owner.start, ' = __$C(');
+          magicString.appendRight(scope.owner.start, '__$C(');
           magicString.appendLeft(
             scope.owner.end,
             `, ${formattedArgs(closure, hasClosure)})`

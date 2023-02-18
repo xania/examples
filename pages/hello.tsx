@@ -3,8 +3,14 @@
 import { Layout } from "./Layout";
 
 class State {
+  private observers: any[] = [];
   constructor(public value: number) {}
-  set(fn: Function) {}
+  set(fn: Function) {
+    this.value = fn(this.value);
+    for (const obs of this.observers) {
+      obs.next(this.value);
+    }
+  }
   static async staticAsync(fn: Function) {}
   async fetch(fn: Function) {}
   static async staticFetch(fn: Function) {
@@ -13,6 +19,11 @@ class State {
   static arrow = () => {
     console.log("State.arrow", this);
   };
+
+  subscribe(obs) {
+    this.observers.push(obs);
+    return function () {};
+  }
 }
 
 const obj = {
@@ -55,17 +66,33 @@ function sayHello() {
 
 const a = 1;
 export function view() {
-  const state = new State(11);
+  const counter = new State(11);
 
+  const a = new Date();
   function onClick() {
-    state.set((x) => x + 1);
+    counter.set((x) => x + 1);
   }
 
-  return (
-    <Layout>
-      <button click={(_) => console.log(this)}>Click me</button>
-      <button click={onClick}>Click me too</button>
-      Counter: {a}
-    </Layout>
-  );
+  return [
+    "<button id='button01'>click me</button>",
+    function client() {
+      counter.subscribe({
+        next(value) {
+          console.log("counter", value);
+        }
+      });
+      document
+        .getElementById("button01")
+        .addEventListener("click", () => counter.set((x) => x + 1));
+      console.log("hello client", a);
+    }
+  ];
+
+  // return (
+  //   <Layout>
+  //     <button click={(_) => console.log(this)}>Click me</button>
+  //     <button click={onClick}>Click me too</button>
+  //     Counter: {a}
+  //   </Layout>
+  // );
 }

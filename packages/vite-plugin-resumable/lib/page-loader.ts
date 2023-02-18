@@ -226,13 +226,16 @@ export function createLoader(server: ViteDevServer) {
     target: Target = 'server',
     entries: null | string[] = null
   ) {
-    const resolved = await server.pluginContainer.resolveId(url);
-    if (!resolved) {
-      return null;
+    let source = url;
+    if (target === 'server') {
+      const resolved = await server.pluginContainer.resolveId(url);
+      if (!resolved) {
+        return null;
+      }
+      source = resolved.id;
     }
-    const filename = resolved.id;
 
-    const baseResult = await server.transformRequest(filename);
+    const baseResult = await server.transformRequest(source);
 
     if (!baseResult) return null;
 
@@ -253,12 +256,12 @@ export function createLoader(server: ViteDevServer) {
 
     return {
       code: resumeResult.code,
-      file: filename,
-      map: _getCombinedSourcemap(filename, sourcemapChain),
+      file: source,
+      map: _getCombinedSourcemap(source, sourcemapChain),
       genSourceMap() {
         const { map } = this;
         return (
-          `\n//# sourceURL=${filename}\n//# sourceMappingURL=` +
+          `\n//# sourceURL=${source}\n//# sourceMappingURL=` +
           genSourceMapUrl(map)
         );
       },
