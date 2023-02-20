@@ -2,12 +2,7 @@
 import MagicString from 'magic-string';
 import { parse } from './parse';
 import { Closure, Scope } from './scope';
-import {
-  formatBindings,
-  getBindings,
-  selectClosures,
-  selectRootClosures,
-} from './utils';
+import { formatBindings, getBindings, selectRootClosures } from './utils';
 
 import { walk } from 'estree-walker';
 import { ASTNode } from './ast-node';
@@ -76,7 +71,7 @@ function exportClosure(
   closure: Closure,
   hasClosure: (cl: Closure) => boolean
 ) {
-  const { owner, rootStart } = closure.scope;
+  const { owner, rootStart, parent } = closure.scope;
 
   const bindings = getBindings(closure, hasClosure);
   const [params, args, deps] = formatBindings(bindings);
@@ -88,6 +83,19 @@ function exportClosure(
   magicString.appendRight(owner.start, `  return `);
   if (owner.start !== rootStart) {
     magicString.move(owner.start, owner.end, rootStart);
+
+    if (owner.type === 'FunctionExpression') {
+      switch (closure.parent.type) {
+        case 'Property':
+          if (closure.parent.method) {
+            magicString.appendRight(
+              closure.scope.owner.start,
+              `${owner.async ? 'async ' : ''}function `
+            );
+          }
+          break;
+      }
+    }
   }
   magicString.appendLeft(owner.end, '\n}\n');
 }
@@ -144,11 +152,19 @@ function updateClosureReferences(
           );
           break;
         case 'ReturnStatement':
-        case 'Property':
           magicString.appendLeft(
             closure.scope.owner.start,
             `${closure.exportName}(${subArgs});`
           );
+          break;
+        case 'Property':
+          magicString.appendLeft(
+            closure.scope.owner.start,
+            `: ${closure.exportName}(${subArgs});`
+          );
+          if (subParent.start < subParent.key.start) {
+            magicString.remove(subParent.start, subParent.key.start);
+          }
           break;
         default:
           magicString.appendLeft(

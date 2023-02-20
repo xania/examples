@@ -35,14 +35,20 @@ export class HibernationWriter {
           import {hydrate} from "${this.hydrateUrl}";
           import { "${__name}" as closure } from "/@client[${__name}]/${url}";
           `);
-          const closureArgs = __args();
-
-          this.writeObject(closureArgs);
-          output.write(`.then((args) => {
-            const func = closure(...args);
+          if (typeof __args === 'function') {
+            const closureArgs = __args();
+            this.writeObject(closureArgs);
+            output.write(`.then((args) => {
+              const func = closure(...args);
+              func();
+            })
+            `);
+          } else {
+            output.write(`
+            const func = closure();
             func();
-          })
-          `);
+            `);
+          }
 
           for (const [loader, source] of this.importMap.entries) {
             output.write(
@@ -61,17 +67,23 @@ export class HibernationWriter {
     }
   }
 
+  ref: number = 0;
+
   writeObject(obj: any) {
     const { output, refMap, importMap } = this;
     const stack = [obj];
     output.write('hydrate(');
     while (stack.length) {
-      const curr = stack.pop();
+      const curr = stack.pop()!;
+      this.ref++;
 
       if (refMap.hasRef(curr)) {
-        output.write(`#${refMap.getRef(curr)}`);
+        output.write(`{ __ref: ${refMap.getRef(curr)} }`);
         continue;
       }
+
+      refMap.addRef(curr, this.ref);
+
       if (curr instanceof Literal) {
         output.write(curr.value);
       } else if (curr === null) {
@@ -85,7 +97,6 @@ export class HibernationWriter {
       } else if (primitives.includes(typeof curr)) {
         output.write(curr.toString());
       } else if (typeof curr === 'symbol') {
-        const ref = refMap.addRef(curr);
         output.write(`Symbol("${curr.description}")`);
       } else if (curr instanceof Array) {
         output.write(`[`);
@@ -109,7 +120,6 @@ export class HibernationWriter {
       } else if (curr instanceof Function) {
         stack.push(this.importDesc(curr));
       } else if (curr.constructor !== Object) {
-        const ref = refMap.addRef(curr);
         output.write(`{`);
         stack.push(new Literal(`}`));
         stack.push(this.importDesc(curr.constructor));
@@ -121,7 +131,6 @@ export class HibernationWriter {
           }
         }
       } else {
-        const ref = refMap.addRef(curr);
         output.write(`{`);
         stack.push(new Literal('}'));
         for (const k in curr) {

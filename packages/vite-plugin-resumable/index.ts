@@ -5,7 +5,6 @@ import { FileRouteResolver } from '../resumable';
 import { createLoader, parseResumableUrl } from './lib/page-loader';
 import { HibernationWriter } from './lib/hibernate/writer';
 import path from 'node:path';
-import url from 'node:url';
 import { fileToUrl } from './lib/utils';
 
 export interface Options {
@@ -14,12 +13,6 @@ export interface Options {
 
 export function createPageResolver(baseDir: string) {
   new FileRouteResolver(baseDir).resolvePage;
-}
-
-function prop<K extends keyof T, T>(object: T, name: K, def: T[K]): T[K] {
-  const existing = object[name];
-  if (existing) return existing;
-  return (object[name] = def);
 }
 
 export function resumable(xn?: Options): Plugin {
@@ -72,6 +65,7 @@ export function resumable(xn?: Options): Plugin {
             return;
           }
         } else if (req.headers.accept?.includes('text/html')) {
+          res.setHeader('Content-Type', 'text/html');
           const pageUrl = await resolvePage(reqUrl);
           if (pageUrl) {
             try {
@@ -122,7 +116,7 @@ export function resumable(xn?: Options): Plugin {
         return next();
       });
     },
-    resolveId(source, importer, options) {
+    resolveId(source) {
       const prefix = '/@resumable';
       if (source.startsWith(prefix)) {
         return {

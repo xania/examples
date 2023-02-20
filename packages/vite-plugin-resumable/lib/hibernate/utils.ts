@@ -1,5 +1,4 @@
 ﻿export class RefMap {
-  ref: number = 0;
   map = new Map<any, number>();
 
   hasRef(o: any) {
@@ -10,10 +9,8 @@
     return this.map.get(o);
   }
 
-  addRef(o: any) {
-    const ref = ++this.ref;
+  addRef(o: any, ref: number) {
     this.map.set(o, ref);
-    return ref;
   }
 }
 

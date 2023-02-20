@@ -10,7 +10,13 @@
       "name": "Launch Xania App",
       "url": "http://localhost:3000",
       "webRoot": "${workspaceFolder}",
-      "sourceMaps": true
+      "sourceMaps": true,
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "http://localhost:3000"
+        }
+      ]
     }
   ]
 }

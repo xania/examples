@@ -1,6 +1,6 @@
 ﻿import { contentHash } from '../utils/content-hash';
 
-const primitives = ['number', 'bigint', 'boolean'];
+export const primitives = ['number', 'bigint', 'boolean'];
 
 export class Literal {
   constructor(public value: string) {}

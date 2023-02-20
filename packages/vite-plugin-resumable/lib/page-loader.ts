@@ -5,6 +5,7 @@ import type { ViteDevServer } from 'vite';
 import { transformServer } from './transform/server';
 import { _getCombinedSourcemap } from './combine-sourcemaps';
 import { transformClient } from './transform/client';
+import { fileToUrl } from './utils';
 /* use page module because we want to transform source code to resumable script just for the entry file and it's dependencies
  * We also dont want this transform to has effect when same source code is loaded
  */
@@ -227,13 +228,11 @@ export function createLoader(server: ViteDevServer) {
     entries: null | string[] = null
   ) {
     let source = url;
-    if (target === 'server') {
-      const resolved = await server.pluginContainer.resolveId(url);
-      if (!resolved) {
-        return null;
-      }
-      source = resolved.id;
+    const resolved = await server.pluginContainer.resolveId(url);
+    if (!resolved) {
+      return null;
     }
+    source = resolved.id;
 
     const baseResult = await server.transformRequest(source);
 
@@ -241,7 +240,15 @@ export function createLoader(server: ViteDevServer) {
 
     const sourcemapChain: SourceMap[] = [];
     if (baseResult.map) {
-      sourcemapChain.push(baseResult.map);
+      // if (target === 'client') {
+      const targettedMap = {
+        ...baseResult.map,
+        sources: baseResult.map.sources.map((x) =>
+          fileToUrl(x, server.config.root)
+        ),
+      };
+      sourcemapChain.push(targettedMap);
+      // }
     }
 
     const resumeResult =
